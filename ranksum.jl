@@ -108,6 +108,43 @@ function ranksum(x::AbstractArray, labels::Vector{Bool})
 	r1, n1, ties_adjust
 end
 
+function counts(x::Vector{T}, nlevels=length(unique(x))) where {T <: Signed}
+	n = zeros(Int64, nlevels)
+	for i in x
+		n[i] += 1
+	end
+	n
+end
+
+function ranksum(x::AbstractArray, labels::Vector{T}, nlabels=length(unique(labels))) where {T <: Signed}
+	n = length(x)
+	J = sortperm(x)
+
+	ri = zeros(Float64, nlabels)
+	ni = counts(labels, nlabels)
+	ties_adjust = 0.0
+
+	i = 1
+	while i <= n
+		j = i
+		while (j < n) && x[J[j]] == x[J[j+1]]
+			j += 1
+		end
+
+		rk = (i + j) / 2 # (average) rank for i:j
+		for lbl in labels[J[i:j]]
+			ri[lbl] += rk
+		end
+
+		ti = length(i:j)
+		ties_adjust += (ti^3 - ti)
+
+		i = j + 1
+	end
+
+	ri, ni, ties_adjust
+end
+
 function ranksumtest(A::SparseMatrixCSC, labels::Vector{Bool})
 	n = size(A,1)
 	@assert n == length(labels)
@@ -136,6 +173,35 @@ function ranksumtest(x::AbstractArray, labels::Vector{Bool})
 	twosided = 2 * min(less, greater)
 
 	twosided
+end
+
+function ranksumtest(x::AbstractArray, labels::Vector{T}, nlabels=length(unique(labels))) where {T <: Signed}
+	n = length(x)
+
+	ri, ni, ties_adjust = ranksum(x, labels, nlabels)
+
+	nothers = n .- ni
+	U = ni .* nothers + ni .* (ni .+ 1) ./ 2 .- ri
+
+	ties_adjust /= n*(n-1)
+	sigma = sqrt.((ni .* nothers ./ 12) .* ((n + 1) - ties_adjust))
+
+	mu = ni.*nothers./2
+
+	zlowertail = (U.+0.5.-mu)./sigma
+	zuppertail = (U.-0.5.-mu)./sigma
+
+	less, greater = cdf.(Normal(), zlowertail), ccdf.(Normal(), zuppertail)
+	twosided = 2 .* min.(less, greater)
+
+	twosided
+end
+
+function ranksumtest(A::SparseMatrixCSC, labels::Vector{T}, nlabels=length(unique(labels))) where {T <: Signed}
+	n = size(A,1)
+	@assert n == length(labels)
+
+	[ranksumtest(Vector(A[:,c]), labels, nlabels) for c in 1:size(A,2)]
 end
 
 statistics = [1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30, 0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29]
