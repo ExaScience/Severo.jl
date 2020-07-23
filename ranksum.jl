@@ -1,4 +1,4 @@
-import SparseArrays: SparseMatrixCSC, SparseVector, nonzeros, nonzeroinds, nnz
+import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, nonzeros, nonzeroinds, nnz, nzrange
 import Distributions: cdf, ccdf, Normal
 
 function rank(x::AbstractArray)
@@ -108,8 +108,8 @@ function ranksum(x::AbstractArray, labels::Vector{Bool})
 	r1, n1, ties_adjust
 end
 
-function counts(x::Vector{T}, nlevels=length(unique(x))) where {T <: Signed}
-	n = zeros(Int64, nlevels)
+function counts(x::AbstractVector{T}; nlabels=length(unique(x))) where {T <: Signed}
+	n = zeros(Int64, nlabels)
 	for i in x
 		n[i] += 1
 	end
@@ -121,7 +121,7 @@ function ranksum(x::AbstractArray, labels::Vector{T}, nlabels=length(unique(labe
 	J = sortperm(x)
 
 	ri = zeros(Float64, nlabels)
-	ni = counts(labels, nlabels)
+	ni = counts(labels; nlabels=nlabels)
 	ties_adjust = 0.0
 
 	i = 1
@@ -207,3 +207,37 @@ end
 statistics = [1.83,  0.50,  1.62,  2.48, 1.68, 1.88, 1.55, 3.06, 1.30, 0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.06, 3.14, 1.29]
 labels = Bool[1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 pval = 0.13291945818531886
+
+function counts(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::AbstractVector{<:Integer}; thresh_min::T = zero(T), nlabels=length(unique(lbls))) where T
+	n = zeros(Int64, nlabels)
+	for (i,x) in zip(ix, v)
+		if x > thresh_min
+			n[lbls[i]] += 1
+		end
+	end
+	n
+end
+
+function counts(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; thresh_min::T = zero(T), nlabels=length(unique(lbls))) where T
+	@assert zero(T) <= thresh_min
+	c = counts(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
+end
+
+function means(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T
+	total = counts(lbls; nlabels=nlabels)
+	means = zeros(T, nlabels)
+	n = zeros(Int64, nlabels)
+	for (i,x) in zip(ix, v)
+		idx = lbls[i]
+		n[idx] += 1
+		means[idx] += (x - means[idx]) / n[idx]
+	end
+
+	for i in 1:length(n)
+		means[i] *= n[i] / total[i]
+	end
+
+	means, total
+end
+
+means(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T = means(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
