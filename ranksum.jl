@@ -223,8 +223,18 @@ function counts(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; thresh_
 	c = counts(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
 end
 
-function means(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T
-	total = counts(lbls; nlabels=nlabels)
+function means(v::AbstractVector{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T
+	means = zeros(T, nlabels)
+	n = zeros(Int64, nlabels)
+	for (x,idx) in zip(v, lbls)
+		n[idx] += 1
+		means[idx] += (x - means[idx]) / n[idx]
+	end
+
+	means
+end
+
+function means(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls)), totals=counts(lbls; nlabels=nlabels)) where T
 	means = zeros(T, nlabels)
 	n = zeros(Int64, nlabels)
 	for (i,x) in zip(ix, v)
@@ -234,13 +244,16 @@ function means(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::Abstra
 	end
 
 	for i in 1:length(n)
-		means[i] *= n[i] / total[i]
+		means[i] *= n[i] / totals[i]
 	end
 
-	means, total
+	means
 end
 
-means(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T = means(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
+means(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls)), totals=counts(lbls; nlabels=nlabels)) where T = means(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
+function means_expm1(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls)), totals=counts(lbls; nlabels=nlabels)) where T
+  means(nonzeroinds(x), expm1.(nonzeros(x)), lbls, totals=totals, nlabels=nlabels)
+end
 
 import HDF5: h5read
 function read_data()
