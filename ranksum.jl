@@ -241,3 +241,35 @@ function means(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::Abstra
 end
 
 means(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls))) where T = means(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
+
+import HDF5: h5read
+function read_data()
+	p = h5read("pct.h5", "data/p")
+	i = h5read("pct.h5", "data/i")
+	x = h5read("pct.h5", "data/x")
+	dim = h5read("pct.h5", "data/dim")
+	A = SparseMatrixCSC(dim[1], dim[2], p .+ 1, i .+ 1, x)
+	lbls = h5read("pct.h5", "idents/id")
+	copy(A'), lbls
+end
+A, lbls = read_data()
+
+function select_features(A, lbls; nlabels=length(unique(lbls)))
+	thresh_min = 0.0
+	min_pct = 0.25
+	min_diff_pct = -Inf
+	logfc_threshold = 0.25
+
+	n,f = size(A)
+	nc = counts(lbls, nlabels=nlabels)
+	C = hcat([counts(x, lbls, nlabels=nlabels) for x in eachcol(A)]...)
+	OC = sum(C; dims=1) .- C
+
+	pct1 = round.(C ./ nc; digits=3)
+	pct2 = round.(OC ./ (n .- nc); digits=3)
+
+	alpha_min = max.(pct1, pct2)
+	alpha_diff = abs.(pct1 .- pct2)
+
+	xx = ((alpha_min .> min_pct) .& (alpha_diff .> min_diff_pct))
+end
