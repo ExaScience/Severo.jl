@@ -1,5 +1,6 @@
-import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, nonzeros, nonzeroinds, nnz, nzrange
+import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 import Distributions: cdf, ccdf, Normal
+import DataFrames: DataFrame
 
 function rank(x::AbstractArray)
 	n = length(x)
@@ -23,7 +24,7 @@ function rank(x::AbstractArray)
 	rk
 end
 
-function ranksum(x::SparseVector, labels::Vector{Bool})
+function ranksum(x::Union{SparseColumnView, SparseVector}, labels::BitVector)
 	n = nnz(x)
 	nz = nonzeros(x)
 
@@ -81,7 +82,7 @@ function ranksum(x::SparseVector, labels::Vector{Bool})
 	r1, n1, ties_adjust
 end
 
-function ranksum(x::AbstractArray, labels::Vector{Bool})
+function ranksum(x::AbstractArray, labels::BitVector)
 	n = length(x)
 	J = sortperm(x)
 
@@ -145,14 +146,14 @@ function ranksum(x::AbstractArray, labels::Vector{T}, nlabels=length(unique(labe
 	ri, ni, ties_adjust
 end
 
-function ranksumtest(A::SparseMatrixCSC, labels::Vector{Bool})
+function ranksumtest(A::Union{SparseMatrixCSCView,SparseMatrixCSC}, labels::BitVector)
 	n = size(A,1)
 	@assert n == length(labels)
 
-	[ranksumtest(A[:,c], labels) for c in 1:size(A,2)]
+	[ranksumtest(@view(A[:,c]), labels) for c in 1:size(A,2)]
 end
 
-function ranksumtest(x::AbstractArray, labels::Vector{Bool})
+function ranksumtest(x::AbstractArray, labels::BitVector)
 	n = length(x)
 
 	r1, n1, ties_adjust = ranksum(x, labels)
@@ -275,6 +276,7 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
 
 	n,f = size(A)
 	nc = counts(lbls, nlabels=nlabels)
+  @assert n == length(lbls)
 
   selected = falses(f, 16)
   for (i,x) in enumerate(eachcol(A))
@@ -299,4 +301,13 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
   end
 
   selected
+end
+
+function findallmarkers(A, lbls;  nlabels=length(unique(lbls)))
+	n,f = size(A)
+  @assert n == length(lbls)
+
+  selected = select_features(A, lbls, nlabels=nlabels)
+
+  pvals = [ranksumtest(A[:,selected[:,i]], lbls .== i) for i in 1:nlabels]
 end
