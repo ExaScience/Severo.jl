@@ -275,14 +275,28 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
 
 	n,f = size(A)
 	nc = counts(lbls, nlabels=nlabels)
-	C = hcat([counts(x, lbls, nlabels=nlabels) for x in eachcol(A)]...)
-	OC = sum(C; dims=1) .- C
 
-	pct1 = round.(C ./ nc; digits=3)
-	pct2 = round.(OC ./ (n .- nc); digits=3)
+  selected = falses(f, 16)
+  for (i,x) in enumerate(eachcol(A))
+    C = counts(x, lbls, nlabels=nlabels)
+    OC = sum(C) .- C
 
-	alpha_min = max.(pct1, pct2)
-	alpha_diff = abs.(pct1 .- pct2)
+    pct1 = round.(C ./ nc; digits=3)
+    pct2 = round.(OC ./ (n .- nc); digits=3)
 
-	xx = ((alpha_min .> min_pct) .& (alpha_diff .> min_diff_pct))
+    alpha_min = max.(pct1, pct2)
+    alpha_diff = abs.(pct1 .- pct2)
+
+    xx = ((alpha_min .> min_pct) .& (alpha_diff .> min_diff_pct))
+    any(xx) || continue
+
+    mu1 = means_expm1(x, lbls; totals=nc, nlabels=nlabels)
+    mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (n .- nc)
+    total_diff = log.(mu1.+1) .- log.(mu2.+1)
+
+    xx .&= (total_diff .> logfc_threshold)
+    selected[i,:] = xx
+  end
+
+  selected
 end
