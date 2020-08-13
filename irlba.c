@@ -42,7 +42,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 	double S, R, SS, RR;
 	int inc = 1;
 
-	matmul(W + j * n, 'N', V + j * n, data);
+	matmul(W + j * m, 'N', V + j * n, data);
 
 	if(j != 0)
 		orthog(W, W + j * m, T, m, j);
@@ -81,7 +81,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 
 			/* One step of block classical Gram-Schmidt process */
 			RR = -R;
-			F77_NAME(daxpy)(&m, &R, W + j * m, &inc, W + (j + 1) * m, &inc);
+			F77_NAME(daxpy)(&m, &RR, W + j * m, &inc, W + (j + 1) * m, &inc);
 
 			/* full re-orthogonalization step. "long vectors" */
 			orthog(W, W + (j + 1) * m, T, m, j + 1);
@@ -261,7 +261,7 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	int *iwork = malloc(8 * m_b * sizeof(int));
 
 	int lwork = prep_svd(m_b, m_b, B, BS, BU, BV, iwork);
-	double *work = malloc((3 * m_b * m_b + 4 * m_b) * sizeof(double));
+	double *work = malloc(lwork * sizeof(double));
 
 	int inc = 1;
 	int info;
