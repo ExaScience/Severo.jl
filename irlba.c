@@ -163,9 +163,9 @@ int do_svd(int m, int n, double *A, double *S, double *U, double *VT,
 
 int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		double tol,
-		double *s, // output singular values
-		double *U, // output left singular vectors
-		double *VT, // output right singular vectors
+		double *so, // output singular values
+		double *Uo, // output left singular vectors
+		double *Vo, // output right singular vectors
 		double *V, // work (n x m_b)
 		double *W, // work (m x m_b)
 		double *F, // work (n)
@@ -173,7 +173,7 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		double *B, // work (m_b x m_b)
 		double *BS, // work (m_b),
 		double *BU, // work (m_b x m_b)
-		double *BVT, // work (m_b x m_b)
+		double *BV, // work (m_b x m_b)
 		double *U1, // work (m x m_b)
 		double *V1, // work (n x m_b)
 		double *work, // work (lwork)
@@ -202,7 +202,7 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		F77_NAME(dscal)(&n, &RR, F, &inc);
 
 		/* Compute singular triplets of B */
-		info = do_svd(m_b, m_b, B, BS, BU, BVT, work, lwork, iwork);
+		info = do_svd(m_b, m_b, B, BS, BU, BV, work, lwork, iwork);
 		if( info != 0 )
 			break;
 
@@ -214,7 +214,7 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 			break;
 
 		/* Update the right approximate singular vectors. */
-		F77_NAME(dgemm)("N", "T", &n, &k, &m_b, &alpha, V, &n, BVT, &m_b, &beta, V1, &n);
+		F77_NAME(dgemm)("N", "T", &n, &k, &m_b, &alpha, V, &n, BV, &m_b, &beta, V1, &n);
 		F77_NAME(dlacpy)("N", &n, &k, V1, &n, V, &n);
 		F77_NAME(dcopy)(&n, F, &inc, V + k * n, &inc);
 
@@ -233,9 +233,9 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 	}
 
 	if(info == 0) {
-		F77_NAME(dcopy)(&nu, BS, &inc, s, &inc);
-		F77_NAME(dgemm)("N", "N", &m, &nu, &m_b, &alpha, W, &m, BU, &m_b, &beta, U, &m);
-		F77_NAME(dgemm)("N", "T", &n, &nu, &m_b, &alpha, V, &m, BVT, &m_b, &beta, VT, &n);
+		F77_NAME(dcopy)(&nu, BS, &inc, so, &inc);
+		F77_NAME(dgemm)("N", "N", &m, &nu, &m_b, &alpha, W, &m, BU, &m_b, &beta, Uo, &m);
+		F77_NAME(dgemm)("N", "T", &n, &nu, &m_b, &alpha, V, &n, BV, &m_b, &beta, Vo, &n);
 	}
 
 	return info;
@@ -243,9 +243,9 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 
 int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 		double *init, // input starting vector (n) (can be NULL)
-		double *s, // output singular values
-		double *U, // output left singular vectors
-		double *VT, // output right singular vectors
+		double *so, // output singular values
+		double *Uo, // output left singular vectors
+		double *Vo, // output right singular vectors
 		randn_t randn, matmul_t matmul, void *data) {
 
 	double *V = malloc(n * m_b * sizeof(double));
@@ -255,12 +255,12 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	double *B = malloc(m_b * m_b * sizeof(double));
 	double *BS = malloc(m_b * sizeof(double));
 	double *BU = malloc(m_b * m_b * sizeof(double));
-	double *BVT = malloc(m_b * m_b * sizeof(double));
+	double *BV = malloc(m_b * m_b * sizeof(double));
 	double *U1 = malloc(m * m_b * sizeof(double));
 	double *V1 = malloc(n * m_b * sizeof(double));
 	int *iwork = malloc(8 * m_b * sizeof(int));
 
-	int lwork = prep_svd(m_b, m_b, B, BS, BU, BVT, iwork);
+	int lwork = prep_svd(m_b, m_b, B, BS, BU, BV, iwork);
 	double *work = malloc((3 * m_b * m_b + 4 * m_b) * sizeof(double));
 
 	int inc = 1;
@@ -271,10 +271,10 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	memset(B, 0, m_b * m_b * sizeof(double));
 
 	if( restart > 0 ) {
-		F77_NAME(dlacpy)("N", &m, &restart, VT, &n, V, &n);
-		F77_NAME(dlacpy)("N", &m, &restart, U, &m, W, &m);
+		F77_NAME(dlacpy)("N", &m, &restart, Vo, &n, V, &n);
+		F77_NAME(dlacpy)("N", &m, &restart, Uo, &m, W, &m);
 		for(i = 0; i < restart; ++i) {
-			B[i * m_b + i] = s[i];
+			B[i * m_b + i] = so[i];
 		}
 	}
 
@@ -290,15 +290,15 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	S = 1 / S;
 	F77_NAME(dscal)(&n, &S, V + restart * n, &inc);
 
-	info = irlba_(m, n, nu, m_b, maxit, restart, tol, s, U, VT,
-		V, W, F, T, B, BS, BU, BVT, U1, V1, work, lwork, iwork,
+	info = irlba_(m, n, nu, m_b, maxit, restart, tol, so, Uo, Vo,
+		V, W, F, T, B, BS, BU, BV, U1, V1, work, lwork, iwork,
 		randn, matmul, data);
 
 	free(work);
 	free(iwork);
 	free(V1);
 	free(U1);
-	free(BVT);
+	free(BV);
 	free(BU);
 	free(BS);
 	free(B);
