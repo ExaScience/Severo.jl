@@ -156,7 +156,8 @@ int prep_svd(int m, int n, double *A, double *S, double *U, double *VT, int *iwo
 int do_svd(int m, int n, double *A, double *S, double *U, double *VT,
 						 double *work, int lwork, int *iwork) {
 	int info;
-	F77_NAME(dgesdd)("O", &m, &n, A, &m, S, U, &m, VT, &n, work, &lwork, iwork, &info);
+	F77_NAME(dlacpy)("N", &m, &n, A, &m, U, &m);
+	F77_NAME(dgesdd)("O", &m, &n, U, &m, S, U, &m, VT, &n, work, &lwork, iwork, &info);
 	return info;
 }
 
@@ -179,12 +180,13 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		int lwork,
 		int *iwork, // work (8 * m_b)
 		randn_t randn, matmul_t matmul, void *data) {
-	int iter;
+	int iter, i;
 	int info = 0;
 	int inc = 1;
 	int k = restart;
 	double R, RR;
 	double alpha = 1.0, beta = 0.0;
+	double Smax = -INFINITY, Smin = INFINITY;
 
 	double SVtol = sqrt(eps());
 	if(tol < SVtol) SVtol = tol;
@@ -204,7 +206,10 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		if( info != 0 )
 			break;
 
-		info = convtest(m_b, BU, R, nu, tol, BS[0], &k);
+		if( BS[0] > Smax ) Smax = BS[0];
+		if( BS[m_b-1] < Smin ) Smin = BS[0];
+
+		info = convtest(m_b, BU, R, nu, tol, Smax, &k);
 		if( info == 0 )
 			break;
 
@@ -217,13 +222,20 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		F77_NAME(dgemm)("N", "N", &m, &k, &m_b, &alpha, W, &m, BU, &m_b, &beta, U1, &m);
 		F77_NAME(dlacpy)("N", &m, &k, U1, &m, W, &m);
 
+		/* Update B matrix */
+		memset(B, 0, m_b * m_b * sizeof(double));
+		for(i = 0; i < k; ++i) {
+			B[i * m_b + i] = BS[i];
+			B[k * m_b + i] = R * BU[i * m_b + (m_b - 1)];
+		}
+
 		iter++;
 	}
 
 	if(info == 0) {
 		F77_NAME(dcopy)(&nu, BS, &inc, s, &inc);
-		F77_NAME(dgemm)("N", "N", &n, &nu, &m_b, &alpha, V, &m, BVT, &k, &beta, VT, &n);
 		F77_NAME(dgemm)("N", "N", &m, &nu, &m_b, &alpha, W, &m, BU, &m_b, &beta, U, &m);
+		F77_NAME(dgemm)("N", "T", &n, &nu, &m_b, &alpha, V, &m, BVT, &m_b, &beta, VT, &n);
 	}
 
 	return info;
