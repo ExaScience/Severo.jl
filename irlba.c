@@ -242,6 +242,7 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 }
 
 int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
+		double *init, // input starting vector (n) (can be NULL)
 		double *s, // output singular values
 		double *U, // output left singular vectors
 		double *VT, // output right singular vectors
@@ -263,9 +264,33 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	double *work = malloc((3 * m_b * m_b + 4 * m_b) * sizeof(double));
 
 	int inc = 1;
-	F77_NAME(dcopy)(&n, VT, &inc, V, &inc);
+	int info;
+	double S;
+	int i;
 
-	int info = irlba_(m, n, nu, m_b, maxit, restart, tol, s, U, VT,
+	memset(B, 0, m_b * m_b * sizeof(double));
+
+	if( restart > 0 ) {
+		F77_NAME(dlacpy)("N", &m, &restart, VT, &n, V, &n);
+		F77_NAME(dlacpy)("N", &m, &restart, U, &m, W, &m);
+		for(i = 0; i < restart; ++i) {
+			B[i * m_b + i] = s[i];
+		}
+	}
+
+	if( init != NULL )
+		F77_NAME(dcopy)(&n, init, &inc, V + restart * n, &inc);
+	else
+		randn(V + restart * n, n, data);
+
+	/* normalize starting vector */
+	S = F77_NAME(dnrm2)(&n, V + restart * n, &inc);
+	if(S < eps())
+		return -1;
+	S = 1 / S;
+	F77_NAME(dscal)(&n, &S, V + restart * n, &inc);
+
+	info = irlba_(m, n, nu, m_b, maxit, restart, tol, s, U, VT,
 		V, W, F, T, B, BS, BU, BVT, U1, V1, work, lwork, iwork,
 		randn, matmul, data);
 
