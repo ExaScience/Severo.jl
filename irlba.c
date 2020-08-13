@@ -103,25 +103,28 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 	}
 }
 
-int convtest(int m_b, double *BU, double R, int n, double tol, double Smax, int *k) {
-	double res;
-	int j, Len_res = 0;
+int convtest(int m_b, double *res, double *svratio, int n, double tol, double SVtol, int *k) {
+	int j, Len_res = 0, Len_res_sv = 0;
+	int augment = 3;
 
-	for(j = 0; j < m_b; j++) {
-		res = R * BU[j * m_b + (m_b - 1)];
-		if(fabs(res) < tol * Smax)
+	for(j = 0; j < n; j++) {
+		if(fabs(res[j]) < tol) {
+			if(svratio[j] < SVtol)
+				Len_res_sv++;
 			Len_res++;
+		}
 	}
 
-	if(Len_res >= n)
+	if(Len_res_sv >= n)
 		return 0;
 
-	if(*k < n + Len_res)
-		*k = n + Len_res;
-	if(*k > m_b - 3)
-		*k = m_b - 3;
-	if(*k < 1)
-		*k = 1;
+	if(Len_res < augment)
+		augment = Len_res;
+
+	if(*k < n + augment)
+		*k = n + augment;
+	if(*k > m_b - 1)
+		*k = m_b - 1;
 	return -2;
 }
 
@@ -191,6 +194,8 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 	double SVtol = sqrt(eps());
 	if(tol < SVtol) SVtol = tol;
 
+	memset(so, 0, nu);
+
 	iter = 0;
 	while(iter < maxit) {
 		/* Compute Lanczos bidiagonalization decomposition B */
@@ -207,9 +212,18 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 			break;
 
 		if( BS[0] > Smax ) Smax = BS[0];
-		if( BS[m_b-1] < Smin ) Smin = BS[0];
+		if( BS[m_b-1] < Smin ) Smin = BS[m_b-1];
 
-		info = convtest(m_b, BU, R, nu, tol, Smax, &k);
+		for(i = 0; i < m_b; ++i)
+			T[i] = R * BU[i * m_b + (m_b - 1)];
+
+		for(i = 0; i < nu; ++i)
+			so[i] = fabs(so[i] - BS[i]) / BS[i];
+
+		info = convtest(m_b, T, so, nu, tol * Smax, tol, &k);
+/*		printf("iter %d: sv[%d] = %f, k = %d -> converged %d\n", iter, nu, BS[nu], k, info == 0);*/
+
+		F77_NAME(dcopy)(&nu, BS, &inc, so, &inc);
 		if( info == 0 )
 			break;
 
@@ -226,14 +240,13 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		memset(B, 0, m_b * m_b * sizeof(double));
 		for(i = 0; i < k; ++i) {
 			B[i * m_b + i] = BS[i];
-			B[k * m_b + i] = R * BU[i * m_b + (m_b - 1)];
+			B[k * m_b + i] = T[i];
 		}
 
 		iter++;
 	}
 
 	if(info == 0) {
-		F77_NAME(dcopy)(&nu, BS, &inc, so, &inc);
 		F77_NAME(dgemm)("N", "N", &m, &nu, &m_b, &alpha, W, &m, BU, &m_b, &beta, Uo, &m);
 		F77_NAME(dgemm)("N", "T", &n, &nu, &m_b, &alpha, V, &n, BV, &m_b, &beta, Vo, &n);
 	}
