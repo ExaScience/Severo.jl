@@ -1,14 +1,18 @@
 import Random: randn
-import LinearAlgebra: mul!, diagm, svd
+import LinearAlgebra: mul!, diagm, svd, dot
+import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange, sprand
 import CSV
 import Test: @test
 
-struct UserData
-	A::Matrix{Float64}
+abstract type MatMulData end
+
+struct MatMulDataNoCenter{T} <: MatMulData
+	A::T
 end
 
-function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, data::UserData)
-	m,n = size(data.A)
+function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{Float64}, data::MatMulDataNoCenter)
+	A = data.A
+	m,n = size(A)
 
 	if trans == 84
 		x = unsafe_wrap(Array, xptr, m)
@@ -22,13 +26,49 @@ function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, data::User
 	nothing
 end
 
-function randv(yptr::Ptr{Float64}, n::Cint, data::UserData)
+struct MatMulDataCenterScale{T} <: MatMulData
+	A::T
+	center::Vector{Float64}
+	scale::Vector{Float64}
+end
+
+function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{Float64}, data::MatMulDataCenterScale)
+	A = data.A
+	m,n = size(A)
+
+	if trans == 84
+		x = unsafe_wrap(Array, xptr, m)
+		y = unsafe_wrap(Array, yptr, n)
+		mul!(y, A', x)
+		y ./= data.scale
+
+		beta = sum(x)
+		y .-= beta .* center ./ scale
+	else
+		x = unsafe_wrap(Array, xptr, n)
+		y = unsafe_wrap(Array, yptr, m)
+		temp .= data.scale .* x
+		mul!(y, A, temp)
+		y .-= dot(data.center, temp)
+	end
+	nothing
+end
+
+function MatMulData(A::T, center=nothing, scale=nothing) where T
+	if center !== nothing
+		MatMulDataCenterScale(A, center, scale)
+	else
+		MatMulDataNoCenter(A)
+	end
+end
+
+function randv(yptr::Ptr{Float64}, n::Cint, data::MatMulData)
 	y = unsafe_wrap(Array, yptr, n)
 	y[:] = randn(n)
 	nothing
 end
 
-function irlba(A, nu, init=nothing)
+function irlba(A, nu; center=nothing, scale=nothing, init=nothing)
 	m,n = size(A)
 	m_b = nu + 7
 
@@ -56,13 +96,13 @@ function irlba(A, nu, init=nothing)
 	ccall(("irlba", "./irlba.so"), Cint,
 		(Int64, Int64, Int64, Int64, Int64, Int64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Cvoid}, Ptr{Cvoid}, Any),
 		m, n, nu, m_b, maxit, restart, tol, init, s, U, V,
-		@cfunction(randv, Cvoid, (Ptr{Float64}, Cint, Ref{UserData})),
-		@cfunction(matmul, Cvoid, (Ptr{Float64}, Cchar, Ptr{Float64}, Ref{UserData})),
-		UserData(A))
+		@cfunction(randv, Cvoid, (Ptr{Float64}, Cint, Ref{MatMulData})),
+		@cfunction(matmul, Cvoid, (Ptr{Float64}, Cchar, Ptr{Float64}, Ptr{Float64}, Ref{MatMulData})),
+		MatMulData(A, center, scale))
 	U,s,V
 end
 
-function irlba(A, nu, Uold, sold, Vold, init=nothing)
+function irlba(A, nu, Uold, sold, Vold; center=nothing, scale=nothing, init=nothing)
 	m,n = size(A)
 	m_b = nu + 7
 
@@ -95,23 +135,55 @@ function irlba(A, nu, Uold, sold, Vold, init=nothing)
 	ccall(("irlba", "./irlba.so"), Cint,
 		(Int64, Int64, Int64, Int64, Int64, Int64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Cvoid}, Ptr{Cvoid}, Any),
 		m, n, nu, m_b, maxit, restart, tol, init, s, U, V,
-		@cfunction(randv, Cvoid, (Ptr{Float64}, Cint, Ref{UserData})),
-		@cfunction(matmul, Cvoid, (Ptr{Float64}, Cchar, Ptr{Float64}, Ref{UserData})),
-		UserData(A))
+		@cfunction(randv, Cvoid, (Ptr{Float64}, Cint, Ref{MatMulData})),
+		@cfunction(matmul, Cvoid, (Ptr{Float64}, Cchar, Ptr{Float64}, Ptr{Float64}, Ref{MatMulData})),
+		MatMulData(A, center, scale))
 	U,s,V
 end
 
-A = Matrix(CSV.read("tests/A1.csv", header=false))
+function mean_var(x::Union{SparseColumnView, SparseVector})
+	n = length(x)
 
-init = [-0.11402883  0.69200073 -0.01087479 -0.09644176  0.06517088 -0.34087181 0.10655937 -0.02089952  0.10182638 -0.21350242 -0.22232905 -0.15070250 -0.16691015  0.28232757  0.34320183 -0.03409794 -0.07800907 -0.07151129 0.01504743  0.02106057]
+	count = n - nnz(x)
+	mu = s = zero(eltype(x))
 
-U,s,V = irlba(A, 2, init)
+	# nonzeros
+	for v in nonzeros(x)
+	  count += 1
+	  delta = (v - mu)
+	  mu += delta / count
+	  s += delta * (v - mu)
+	end
 
-init = [ 0.075692998 -0.227164504 -0.331333950  0.371658075 -0.186102469 0.057737044 -0.033130097 -0.313616740  0.194434088  0.079816824 0.395964734  0.015153232 -0.096824133  0.165667808 -0.433617654 -0.271884126  0.185128916 -0.151392738 -0.012108516  0.006006806]
-U2,s2,V2 = irlba(A, 3, U, s, V, init)
+	std = sqrt(s / (n-1))
+	mu, std
+ end
+
+ function mean_var(A::SparseMatrixCSC{T}) where T
+	n = size(A, 2)
+	mu = zeros(T, n)
+	std = zeros(T, n)
+
+	for (i,x) in enumerate(eachcol(A))
+		mu[i], std[i] = mean_var(x)
+	end
+
+	mu, std
+ end
+
+#A = Matrix(CSV.read("tests/A1.csv", header=false))
+
+#U,s,V = irlba(A, 2)
+
+#U2,s2,V2 = irlba(A, 3, U, s, V, init)
 #S = svd(A)
 #@test s ≈ S.S[1:nu] atol=1e-5
 
 #S_recon = S.U[:,1:nu] * Diagonal(S.S[1:nu]) * S.V[:,1:nu]'
 #A_recon = U*Diagonal(s)*V'
 #@test S_recon ≈ A_recon atol=2e-6
+
+A = sprand(10000, 500, 0.02)
+@time U,s,V = irlba(A, 10)
+@time S = svd(Matrix(A))
+@time UU,ss,VV = irlba(A'A, 10)

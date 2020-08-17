@@ -6,8 +6,8 @@
 
 #include "lapack.h"
 
-// y = A*x if trans = 'N' or y = A'x if trans = 'T'
-typedef void (*matmul_t)(double *y, char trans, double * x, void *data);
+// y = A*x if trans = 'N' or y = A'x if trans = 'T', temp is an n vector
+typedef void (*matmul_t)(double *y, char trans, double * x, double *temp, void *data);
 typedef void (*randn_t)(double *y, int n, void *data);
 
 /* orthog(X,Y,...)
@@ -42,7 +42,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 	double S, R, SS, RR;
 	int inc = 1;
 
-	matmul(W + j * m, 'N', V + j * n, data);
+	matmul(W + j * m, 'N', V + j * n, T, data);
 
 	if(j != 0)
 		orthog(W, W + j * m, T, m, j);
@@ -58,7 +58,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 	F77_NAME(dscal)(&m, &SS, W + j * m, &inc);
 
 	while(j < m_b) {
-		matmul(F, 'T', W + j * m, data);
+		matmul(F, 'T', W + j * m, T, data);
 		SS = -S;
 		F77_NAME(daxpy)(&n, &SS, V + j * n, &inc, F, &inc);
 		orthog(V, F, T, n, j + 1);
@@ -77,7 +77,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 			B[j * m_b + j] = S;
 			B[(j+1) * m_b + j] = R;
 
-			matmul(W + (j + 1) * m, 'N', V + (j + 1) * n, data);
+			matmul(W + (j + 1) * m, 'N', V + (j + 1) * n, T, data);
 
 			/* One step of block classical Gram-Schmidt process */
 			RR = -R;
