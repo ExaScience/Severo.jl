@@ -42,3 +42,13 @@ function scale_center(A::SparseMatrixCSC)
   end
   B, mu
 end
+
+function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Signed}
+  B = similar(A, Float64)
+
+  for (a,b) in zip(eachcol(A), eachcol(B))
+    nonzeros(b) .= log1p.(scale_factor * nonzeros(a) ./ sum(nonzeros(a)))
+  end
+
+  B
+end
