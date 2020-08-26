@@ -256,18 +256,6 @@ function means_expm1(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nl
   means(nonzeroinds(x), expm1.(nonzeros(x)), lbls, totals=totals, nlabels=nlabels)
 end
 
-import HDF5: h5read
-function read_data()
-	p = h5read("pct.h5", "data/p")
-	i = h5read("pct.h5", "data/i")
-	x = h5read("pct.h5", "data/x")
-	dim = h5read("pct.h5", "data/dim")
-	A = SparseMatrixCSC(dim[1], dim[2], p .+ 1, i .+ 1, x)
-	lbls = h5read("pct.h5", "idents/id")
-	copy(A'), lbls
-end
-A, lbls = read_data()
-
 function select_features(A, lbls; nlabels=length(unique(lbls)))
 	thresh_min = 0.0
 	min_pct = 0.25
