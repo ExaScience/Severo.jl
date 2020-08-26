@@ -41,13 +41,14 @@ function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{
 		y ./= data.scale
 
 		beta = sum(x)
-		y .-= beta .* center ./ scale
+		y .-= beta .* data.center ./ data.scale
 	else
 		x = unsafe_wrap(Array, xptr, n)
 		y = unsafe_wrap(Array, yptr, m)
-		temp .= data.scale .* x
-		mul!(y, A, temp)
-		y .-= dot(data.center, temp)
+		T = unsafe_wrap(Array, temp, n)
+		T .= x ./ data.scale
+		mul!(y, A, T)
+		y .-= dot(data.center, T)
 	end
 	nothing
 end

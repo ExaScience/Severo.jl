@@ -3,6 +3,7 @@ import HDF5: h5read
 import Printf: @sprintf
 
 include("scaledata.jl")
+include("irlba.jl")
 include("ranksum.jl")
 
 function read_sparse(fname, dataset="/data")
