@@ -253,7 +253,7 @@ end
 
 means(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls)), totals=counts(lbls; nlabels=nlabels)) where T = means(nonzeroinds(x), nonzeros(x), lbls, nlabels=nlabels)
 function means_expm1(x::SparseColumnView{T}, lbls::AbstractVector{<:Integer}; nlabels=length(unique(lbls)), totals=counts(lbls; nlabels=nlabels)) where T
-  means(nonzeroinds(x), expm1.(nonzeros(x)), lbls, totals=totals, nlabels=nlabels)
+	means(nonzeroinds(x), expm1.(nonzeros(x)), lbls, totals=totals, nlabels=nlabels)
 end
 
 function select_features(A, lbls; nlabels=length(unique(lbls)))
@@ -264,38 +264,38 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
 
 	n,f = size(A)
 	nc = counts(lbls, nlabels=nlabels)
-  @assert n == length(lbls)
+	@assert n == length(lbls)
 
-  selected = falses(f, 16)
-  for (i,x) in enumerate(eachcol(A))
-    C = counts(x, lbls, nlabels=nlabels)
-    OC = sum(C) .- C
+	selected = falses(f, 16)
+	for (i,x) in enumerate(eachcol(A))
+		C = counts(x, lbls, nlabels=nlabels)
+		OC = sum(C) .- C
 
-    pct1 = round.(C ./ nc; digits=3)
-    pct2 = round.(OC ./ (n .- nc); digits=3)
+		pct1 = round.(C ./ nc; digits=3)
+		pct2 = round.(OC ./ (n .- nc); digits=3)
 
-    alpha_min = max.(pct1, pct2)
-    alpha_diff = abs.(pct1 .- pct2)
+		alpha_min = max.(pct1, pct2)
+		alpha_diff = abs.(pct1 .- pct2)
 
-    xx = ((alpha_min .> min_pct) .& (alpha_diff .> min_diff_pct))
-    any(xx) || continue
+		xx = ((alpha_min .> min_pct) .& (alpha_diff .> min_diff_pct))
+		any(xx) || continue
 
-    mu1 = means_expm1(x, lbls; totals=nc, nlabels=nlabels)
-    mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (n .- nc)
-    total_diff = log.(mu1.+1) .- log.(mu2.+1)
+		mu1 = means_expm1(x, lbls; totals=nc, nlabels=nlabels)
+		mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (n .- nc)
+		total_diff = log.(mu1.+1) .- log.(mu2.+1)
 
-    xx .&= (total_diff .> logfc_threshold)
-    selected[i,:] = xx
-  end
+		xx .&= (total_diff .> logfc_threshold)
+		selected[i,:] = xx
+	end
 
-  selected
+	selected
 end
 
 function findallmarkers(A, lbls;  nlabels=length(unique(lbls)))
 	n,f = size(A)
-  @assert n == length(lbls)
+	@assert n == length(lbls)
 
-  selected = select_features(A, lbls, nlabels=nlabels)
+	selected = select_features(A, lbls, nlabels=nlabels)
 
-  pvals = [ranksumtest(A[:,selected[:,i]], lbls .== i) for i in 1:nlabels]
+	pvals = [ranksumtest(A[:,selected[:,i]], lbls .== i) for i in 1:nlabels]
 end
