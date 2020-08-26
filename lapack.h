@@ -93,7 +93,7 @@ F77_NAME(dormqr)(const char* side, const char* trans,
 
 /* DGEQR - Computes a QR factorization of a real M-by-N matrix, with best performance for tall and skinny matrices */
 La_extern void
-F77_NAME(dgeqrf)(const int* m, const int* n, double* a, const int* lda,
+F77_NAME(dgeqr)(const int* m, const int* n, double* a, const int* lda,
          double*t, const int *tsize, double* work, const int* lwork, int* info);
 
 La_extern void
