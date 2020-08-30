@@ -46,8 +46,12 @@ end
 function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Signed}
   B = similar(A, Float64)
 
+  s = sum(A, dims=2)
   for (a,b) in zip(eachcol(A), eachcol(B))
-    nonzeros(b) .= log1p.(scale_factor * nonzeros(a) ./ sum(nonzeros(a)))
+    @inbounds for (i, idx) in enumerate(nonzeroinds(a))
+      nonzeros(b)[i] = log1p(scale_factor * nonzeros(a)[i] / s[idx])
+    end
+#    nonzeros(b) .= log1p.(scale_factor * nonzeros(a) ./ s[nonzeroinds(a)])
   end
 
   B
@@ -62,3 +66,14 @@ function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0) where {
 
   A[CI, FI]
 end
+
+function gram_matrix(A, mu, std)
+  m,n = size(A)
+  G = Matrix{eltype(A)}(A'A)
+  #mul!(G, A', A) Converts to dense first?
+  mul!(G, mu, mu', -m, 1.0)
+  G ./= std
+  G ./= std'
+  G
+end
+

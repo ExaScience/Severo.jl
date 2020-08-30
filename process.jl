@@ -33,10 +33,28 @@ A = filter_data(A; min_cells=3, min_features=200)
 B = log_norm(A, scale_factor=1e4)
 println("loading done")
 
+function main(A, lbls, features)
+  @time A = filter_data(A; min_cells=3, min_features=200)
+  @time B = log_norm(A, scale_factor=1e4)
+
+  C = B[:, features]
+  @time mu,std = mean_var(B)
+  mu = mu[features]
+  std = std[features]
+  @time S = irlba(C, 100; center=mu, scale=std)
+
+  @time begin
+    G = gram_matrix(C, mu, std)
+    SG = irlba(G, 100)
+    s = sqrt.(SG[2])
+    Z = C * SG[3]
+  end
+  B, C, mu, std, S
+end
+
+A, lbls = read_data("/data/thaber/1M_nn.h5")
 features = h5read("/data/thaber/1M_nn.h5", "/features/id_filtered")
-C = B[:, features]
-mu,std = mean_var(C)
-println("irlba")
-S = irlba(C, 100; center=mu, scale=std)
+main(A, lbls, features)
+B, C, mu, std, S = main(A, lbls, features)
 
 #@time pvals = findallmarkers(A, lbls)

@@ -1,5 +1,5 @@
 import Random: randn
-import LinearAlgebra: mul!, diagm, svd, dot
+import LinearAlgebra: mul!, diagm, svd, dot, axpy!
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange, sprand
 
 abstract type MatMulData end
@@ -34,6 +34,7 @@ function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{
 	A = data.A
 	m,n = size(A)
 
+	T = unsafe_wrap(Array, temp, n)
 	if trans == 84
 		x = unsafe_wrap(Array, xptr, m)
 		y = unsafe_wrap(Array, yptr, n)
@@ -41,11 +42,11 @@ function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{
 		y ./= data.scale
 
 		beta = sum(x)
-		y .-= beta .* data.center ./ data.scale
+		T .= data.center ./ data.scale
+		axpy!(-beta, T, y)
 	else
 		x = unsafe_wrap(Array, xptr, n)
 		y = unsafe_wrap(Array, yptr, m)
-		T = unsafe_wrap(Array, temp, n)
 		T .= x ./ data.scale
 		mul!(y, A, T)
 		y .-= dot(data.center, T)
