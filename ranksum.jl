@@ -266,7 +266,7 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
 	nc = counts(lbls, nlabels=nlabels)
 	@assert n == length(lbls)
 
-	selected = falses(f, 16)
+	selected = falses(f, nlabels)
 	for (i,x) in enumerate(eachcol(A))
 		C = counts(x, lbls, nlabels=nlabels)
 		OC = sum(C) .- C
@@ -282,7 +282,7 @@ function select_features(A, lbls; nlabels=length(unique(lbls)))
 
 		mu1 = means_expm1(x, lbls; totals=nc, nlabels=nlabels)
 		mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (n .- nc)
-		total_diff = log.(mu1.+1) .- log.(mu2.+1)
+		total_diff = log1p.(mu1) .- log1p.(mu2)
 
 		xx .&= (total_diff .> logfc_threshold)
 		selected[i,:] = xx

@@ -57,14 +57,16 @@ function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Signed}
   B
 end
 
-function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0) where {T <: Signed}
-  features_per_cell = vec(sum(A .> 0, dims=2))
+function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0, min_count=0) where {T <: Signed}
+  features_per_cell = vec(sum(A .> min_count, dims=2))
   CI = (features_per_cell .>= min_features)
+  A = A[CI,:]
 
   cells_per_feature = vec(sum(A .> 0, dims=1))
   FI = (cells_per_feature .>= min_cells)
 
-  A[CI, FI]
+  A[:, FI]
+#  A[CI, FI] # faster but slightly different
 end
 
 function gram_matrix(A, mu, std)
