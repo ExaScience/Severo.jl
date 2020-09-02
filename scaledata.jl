@@ -30,6 +30,23 @@ function mean_var(A::SparseMatrixCSC)
   mu, std
 end
 
+function scale_data(A::SparseMatrixCSC; scale_max=Inf)
+  n,d = size(A)
+  B = copy(A)
+
+  mu = zeros(d)
+  std = zeros(d)
+
+  #((x - mu) / std > scale_max) => x > scale_max * std + mu
+
+  for (i,x) in enumerate(eachcol(B))
+    mu[i], std[i] = mean_var(x)
+    scale_max_i = scale_max * std[i] + mu[i]
+    nonzeros(x)[nonzeros(x) .> scale_max_i] .= scale_max_i
+  end
+  B, mu, std
+end
+
 function scale_center(A::SparseMatrixCSC)
   n,d = size(A)
   B = similar(A)

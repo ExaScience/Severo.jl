@@ -36,11 +36,12 @@ println("loading done")
 function main(A, lbls, features)
   @time A = filter_data(A; min_cells=3, min_features=200)
   @time B = log_norm(A, scale_factor=1e4)
+  @time C, mu, std = scale_data(B; scale_max=10)
 
-  C = B[:, features]
-  @time mu,std = mean_var(B)
+  C = C[:, features]
   mu = mu[features]
   std = std[features]
+
   @time S = irlba(C, 100; center=mu, scale=std)
 
   @time begin
@@ -57,4 +58,4 @@ features = h5read("/data/thaber/1M_nn.h5", "/features/id_filtered")
 main(A, lbls, features)
 B, C, mu, std, S = main(A, lbls, features)
 
-#@time pvals = findallmarkers(A, lbls)
+@time pvals = findallmarkers(B, lbls)
