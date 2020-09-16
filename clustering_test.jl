@@ -12,8 +12,9 @@ function read_sparse(fname, dataset="/data")
 end
 
 include("clustering.jl")
+include("neighbours.jl")
 
 Z = h5read("/data/mca_res.h5", "/pca/embeddings")[:,1:10]
-SNN = read_sparse("/data/mca_res.h5", "/snn")
+snn = compute_snn(Z, 20)
 
-assignment = modularity_cluster(SNN; resolution=0.5)
+assignment = modularity_cluster(snn; resolution=0.5)
