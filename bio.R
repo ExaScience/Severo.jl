@@ -8,7 +8,8 @@ source('tictoc.R')
 #plan("multiprocess", workers=4)
 
 tic()
-pbmc.data <- Read10X(data.dir=".")
+#pbmc.data <- Read10X(data.dir=".")
+pbmc.data <- Read10X_h5("/data/thaber/1M_neurons_filtered_gene_bc_matrices_cut.h5")
 cat("load data", toc(F, T), "\n")
 
 pbmc <- CreateSeuratObject(counts = pbmc.data, project="pbmc3k", min.cells=3, min.features=200)
@@ -25,7 +26,7 @@ all.genes <- rownames(pbmc)
 pbmc <- ScaleData(pbmc, features=all.genes)
 cat("ScaleData", toc(F, T), "\n")
 
-pbmc <- RunPCA(pbmc, npcs = 100, ndims.print = 1:5, nfeatures.print = 5, rev.pca=T)
+pbmc <- RunPCA(pbmc, npcs = 100, ndims.print = 1:5, nfeatures.print = 5)
 cat("RunPCA", toc(F, T), "\n")
 
 #ElbowPlot(pbmc, ndims = 100)
@@ -37,7 +38,7 @@ cat("FindNeighbors", toc(F, T), "\n")
 pbmc <- FindClusters(pbmc, resolution = 0.5)
 cat("FindClusters", toc(F, T), "\n")
 
-pbmc <- FindAllMarkers(pbmc, only.pos=T, min.pct=0.25, logfc.threshold=0.25)
+de <- FindAllMarkers(pbmc, only.pos=T, min.pct=0.25, logfc.threshold=0.25)
 cat("FindAllMarkers", toc(F, T), "\n")
 
 #pbmc <- RunUMAP(pbmc, dims = 1:75, min.dist = 0.75)

@@ -1,3 +1,5 @@
+import SparseArrays: sparse, nonzeros, droptol!
+
 function ann(X, k; eps=0.0)
 	n,d = size(X)
 
@@ -12,7 +14,7 @@ end
 
 function compute_snn(X, k; eps=0.0, prune=1/15)
 	nn_index, distances = ann(X, k, eps=eps)
-	nn = sparse(repeat(1:size(nnindex,1),20), vec(nnindex), ones(length(nnindex)))
+	nn = sparse(repeat(1:size(nn_index,1),k), vec(nn_index), ones(length(nn_index)))
 
 	snn = nn * nn'
 	f(x) = x / (k + (k - x))

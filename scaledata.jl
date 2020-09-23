@@ -82,7 +82,7 @@ function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0, min_cou
   cells_per_feature = vec(sum(A .> 0, dims=1))
   FI = (cells_per_feature .>= min_cells)
 
-  A[:, FI]
+  A[:, FI], CI, FI
 #  A[CI, FI] # faster but slightly different
 end
 

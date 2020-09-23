@@ -28,11 +28,37 @@ function read_data(fname, dataset="/mm10")
   copy(A'), lbls
 end
 
-A, lbls = read_data("/data/thaber/1M_nn.h5")
-A = filter_data(A; min_cells=3, min_features=200)
-B = log_norm(A, scale_factor=1e4)
-println("loading done")
+struct ScaledMatrix{T <: AbstractMatrix, R <: Real}
+  A::T
+  mu::Vector{R}
+  scale::Vector{R}
+end
 
+function ScaledMatrix(A::T, mu::Vector{R}, scale::Vector{R}) where {T <: AbstractMatrix, R <: Real}
+  m,n = size(A)
+  ScaledMatrix{T, R}(A, mu, scale)
+end
+
+#=
+import Base: eltype, size, mul!, transpose, adjoint
+eltype(S::ScaledMatrix) = eltype(S.A)
+size(S::ScaledMatrix) = size(S.A)
+adjoint(S::ScaledMatrix) = Adjoint(S)
+transpose(S::ScaledMatrix) = Transpose(S)
+
+function mul!(C::StridedVecOrMat, S::ScaledMatrix, v::StridedVector, α::Number, β::Number)
+  T = v ./ S.scale
+  mul!(C, S.A, T, α, β)
+  C .-= α * dot(S.mu, T)
+  C
+end
+
+function mul!(C::StridedVecOrMat, S::Adjoint{<:Any, ScaledMatrix}, v::StridedVector, α::Number, β::Number)
+  mul!(C, S.A', v,  α, β)
+  C ./= S.scale
+  beta = sum(v)
+end
+=#
 function main(A, lbls, features)
   @time A = filter_data(A; min_cells=3, min_features=200)
   @time B = log_norm(A, scale_factor=1e4)
@@ -42,20 +68,23 @@ function main(A, lbls, features)
   mu = mu[features]
   std = std[features]
 
-  @time S = irlba(C, 100; center=mu, scale=std)
+  nsv = 100
+  @time S = irlba(C, nsv; center=mu, scale=std)
 
   @time begin
     G = gram_matrix(C, mu, std)
-    SG = irlba(G, 100)
+    SG = irlba(G, nsv)
     s = sqrt.(SG[2])
     Z = C * SG[3]
   end
   B, C, mu, std, S
 end
 
+#=
 A, lbls = read_data("/data/thaber/1M_nn.h5")
 features = h5read("/data/thaber/1M_nn.h5", "/features/id_filtered")
 main(A, lbls, features)
 B, C, mu, std, S = main(A, lbls, features)
 
 @time pvals = findallmarkers(B, lbls)
+=#
