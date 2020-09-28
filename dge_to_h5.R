@@ -81,7 +81,7 @@ loadSparseDge <- function(file) {
 
 bname <- removeSuffix(maybeRemoveSuffix(iname, ".gz"), ".raw.dge.txt")
 if(is.null(oname)) {
-	oname <- paste0(tools::file_path_sans_ext(bname), ".h5")
+	oname <- paste0(bname, ".h5")
 }
 
 x <- loadSparseDge(iname)
