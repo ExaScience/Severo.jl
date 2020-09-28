@@ -1,5 +1,6 @@
 import Loess: loess, predict
-import Statistics: var
+import Statistics: var, mean
+import Distributions: quantile, Normal
 
 standardize_clip(x, mu, std, vmax) = min((x - mu) / std, vmax)
 
@@ -27,4 +28,18 @@ function find_variable_features(A::SparseMatrixCSC{T}, nfeatures=2000; loess_spa
 
 	var_std = standardized_var_clipped(A, mu, expected_std)
 	partialsortperm(var_std, 1:nfeatures, rev=true)
+end
+
+qnorm(q::Real) = quantile(Normal(), q)
+
+function select_features_saunders(counts::SparseMatrixCSC{T}, norm::SparseMatrixCSC{R}; var_thresh=0.1, alpha_thresh=0.99) where {T <: Signed, R <: Real}
+	ncells, ngenes = size(counts)
+	trx_per_cell = vec(sum(counts, dims=2))
+	gene_expr_mean, gene_expr_var = mean_var(norm)
+	nolan_constant = mean(1 ./ trx_per_cell)
+	alphathresh_corrected = alpha_thresh / ngenes
+	genemeanupper = gene_expr_mean .+ qnorm(1 - alphathresh_corrected / 2) * sqrt.(gene_expr_mean * nolan_constant / ncells)
+	basegenelower = log10.(gene_expr_mean .* nolan_constant)
+
+	findall(((gene_expr_var ./ nolan_constant) .> genemeanupper) .& (log10.(gene_expr_var) .> basegenelower .+ var_thresh))
 end
