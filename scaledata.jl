@@ -1,6 +1,6 @@
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 
-function mean_var(x::Union{SparseColumnView, SparseVector})
+function mean_std(x::Union{SparseColumnView, SparseVector})
    n = length(x)
 
    count = n - nnz(x)
@@ -18,16 +18,29 @@ function mean_var(x::Union{SparseColumnView, SparseVector})
    mu, std
 end
 
-function mean_var(A::SparseMatrixCSC)
+function mean_std(A::SparseMatrixCSC)
   n,d = size(A)
   mu = zeros(d)
   std = zeros(d)
 
   for (i,a) in enumerate(eachcol(A))
-    mu[i], std[i] = mean_var(a)
+    mu[i], std[i] = mean_std(a)
   end
 
   mu, std
+end
+
+function mean_var(A::SparseMatrixCSC)
+  n,d = size(A)
+  mu = zeros(d)
+  var = zeros(d)
+
+  for (i,a) in enumerate(eachcol(A))
+    mu[i], std = mean_std(a)
+    var[i] = std^2
+  end
+
+  mu, var
 end
 
 function scale_data(A::SparseMatrixCSC; scale_max=Inf)
@@ -40,7 +53,7 @@ function scale_data(A::SparseMatrixCSC; scale_max=Inf)
   #((x - mu) / std > scale_max) => x > scale_max * std + mu
 
   for (i,x) in enumerate(eachcol(B))
-    mu[i], std[i] = mean_var(x)
+    mu[i], std[i] = mean_std(x)
     scale_max_i = scale_max * std[i] + mu[i]
     nonzeros(x)[nonzeros(x) .> scale_max_i] .= scale_max_i
   end
@@ -53,7 +66,7 @@ function scale_center(A::SparseMatrixCSC)
 
   mu = zeros(d)
   for (i,(a,b)) in enumerate(zip(eachcol(A), eachcol(B)))
-    mu[i], std = mean_var(a)
+    mu[i], std = mean_std(a)
     nonzeros(b) .= nonzeros(a) ./ std
     mu[i] /= std
   end
@@ -69,6 +82,19 @@ function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Signed}
       nonzeros(b)[i] = log1p(scale_factor * nonzeros(a)[i] / s[idx])
     end
 #    nonzeros(b) .= log1p.(scale_factor * nonzeros(a) ./ s[nonzeroinds(a)])
+  end
+
+  B
+end
+
+function row_norm(A::SparseMatrixCSC{T}) where {T <: Signed}
+  B = similar(A, Float64)
+
+  s = sum(A, dims=2)
+  for (a,b) in zip(eachcol(A), eachcol(B))
+    @inbounds for (i, idx) in enumerate(nonzeroinds(a))
+      nonzeros(b)[i] = nonzeros(a)[i] / s[idx]
+    end
   end
 
   B

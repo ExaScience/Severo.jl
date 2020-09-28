@@ -13,7 +13,7 @@ function standardized_var_clipped(A::SparseMatrixCSC{T}, mu::Vector{R}, std::Vec
 end
 
 function find_variable_features(A::SparseMatrixCSC{T}, nfeatures=2000; loess_span=0.5) where {T <: Signed}
-	mu, std = mean_var(A)
+	mu, std = mean_std(A)
 	non_const = std .> 0
 
 	xs, ys = log10.(mu[non_const]), log10.(std[non_const])
