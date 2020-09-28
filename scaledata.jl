@@ -100,9 +100,14 @@ function row_norm(A::SparseMatrixCSC{T}) where {T <: Signed}
   B
 end
 
-function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0, min_count=0) where {T <: Signed}
+function filter_data(A::SparseMatrixCSC{T}; min_cells=0, min_features=0, min_count=0, min_umi=0) where {T <: Signed}
   features_per_cell = vec(sum(A .> min_count, dims=2))
   CI = (features_per_cell .>= min_features)
+
+  if min_umi > 0
+    CI .&= (vec(sum(A, dims=2)) .> min_umi)
+  end
+
   A = A[CI,:]
 
   cells_per_feature = vec(sum(A .> 0, dims=1))
