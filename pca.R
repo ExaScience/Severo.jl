@@ -6,14 +6,14 @@ source("tictoc.R")
 
 fname <- "/data/thaber/1M_neurons_filtered_gene_bc_matrices_cut.h5"
 
-load_h5 <- function(fname) {
+load_h5 <- function(fname, dset="/counts") {
 	A <- new("dgCMatrix")
-	A@i <- as.integer(h5read(fname, "mm10/indices"))
-	A@p <- as.integer(h5read(fname, "mm10/indptr"))
-	A@x <- as.numeric(h5read(fname, "mm10/data"))
-	A@Dim <- as.integer(h5read(fname, "mm10/shape"))
-	rownames(A) <- h5read(fname, "mm10/gene_names")
-	colnames(A) <- h5read(fname, "mm10/barcodes")
+	A@i <- as.integer(h5read(fname, paste0(dset,"/indices")))
+	A@p <- as.integer(h5read(fname, paste0(dset,"/indptr")))
+	A@x <- as.numeric(h5read(fname, paste0(dset,"/data")))
+	A@Dim <- as.integer(h5read(fname, paste0(dset,"/shape")))
+	rownames(A) <- h5read(fname, paste0(dset,"/gene_names"))
+	colnames(A) <- h5read(fname, paste0(dset,"/barcodes"))
 	A <- t(A)
 }
 
