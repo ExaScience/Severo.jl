@@ -31,6 +31,7 @@ end
 
 nodes(network::Network) = network.nodes
 numnodes(network::Network) = length(network.nodes)
+numedges(network::Network) = length(network.edges)
 self_weight(node::Node) = node.self
 numclusters(clustering::Clustering) = length(clustering.clusters)
 
@@ -182,13 +183,47 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 end
 
 function reduced_network(clustering::Clustering)
+	network = clustering.network
 	nnodes = numclusters(clustering)
 	nodes = Vector{Node}(undef, nnodes)
-	edges = Vector{Edge}(undef, nedges)
 
+	edges = Vector{Edge}()
+	sizehint!(edges, min(nnodes^2, numedges(network)))
+
+	totw = 0.0
+	reducedEdges = Vector{Float64}(undef, nnodes)
 	for i in 1:nnodes
-		nodes[i] = clustering.clusters[]
+		fill!(reducedEdges, 0.0)
+
+		self_weight = 0.0
+		weight = 0.0
+
+		for (node, clus) in zip(network.nodes, clustering.nodecluster)
+			clus == i || continue
+
+			@inbounds for e in view(network.edges, node.edges)
+				clust_to = clustering.nodecluster[e.node]
+				if clust_to == i
+					self_weight += e.weight
+				else
+					reducedEdges[clust_to] += e.weight
+				end
+
+				weight += e.weight
+			end
+		end
+
+		edge_start = length(edges) + 1
+		for (j,w) in enumerate(reducedEdges)
+			w != 0.0 || continue
+			push!(edges, Edge(j, w))
+		end
+
+		nodes[i] = Node(self_weight, weight, edge_start:length(edges))
+		totw += weight
 	end
+
+	Network(nodes, edges, totw)
 end
 
 Base.findmax(f, itr) = mapfoldl(x -> (f(x), x), _rf_findmax, itr)
