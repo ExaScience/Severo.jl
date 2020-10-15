@@ -282,6 +282,42 @@ function local_move!(clustering::Clustering)
 	total_gain
 end
 
+function renumber!(clustering::Clustering)
+	labels = zeros(Int64, numclusters(clustering))
+	id = 1
+	for (i,c) in enumerate(clustering.nodecluster)
+		if labels[c] == 0
+			c = labels[c] = id
+			id += 1
+		else
+			c = labels[c]
+		end
+
+		clustering.nodecluster[i] = c
+	end
+
+	for i in 1:length(clustering.clusters)
+		c, p = clustering.clusters[i], labels[i]
+		while p != i && p != 0
+			c, clustering.clusters[p] = clustering.clusters[p], c
+			p = labels[p]
+		end
+	end
+
+	for i in id:length(clustering.clusters)
+		clustering.clusters[i] = Cluster(0.0, 0.0)
+	end
+
+	clustering
+end
+
+function merge!(clustering::Clustering, cluster_reduced::Clustering)
+	for i in 1:length(clustering.nodecluster)
+		clustering.nodecluster[i] = cluster_reduced.nodecluster[clustering.nodecluster[i]]
+	end
+	Clustering(clustering.network, clustering.nodecluster, cluster_reduced.clusters)
+end
+
 import SparseArrays: sparse
 A = sparse(Float64[
 	1  1  1  1  0  0  0  0  0
