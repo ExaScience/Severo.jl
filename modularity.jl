@@ -1,4 +1,5 @@
 import SparseArrays: SparseMatrixCSC, rowvals, nzrange, nonzeros, nnz
+import Random: shuffle
 
 struct Edge
 	node::Int64
@@ -6,6 +7,7 @@ struct Edge
 end
 
 struct Node
+	self::Float64
 	weight::Float64
 	edges::UnitRange{Int64}
 end
@@ -17,7 +19,7 @@ struct Network
 end
 
 struct Cluster
-	w_in::Float64
+	w_in::Float64 #REMOVE modularity shouldn't be called often
 	w_tot::Float64
 end
 
@@ -29,7 +31,7 @@ end
 
 nodes(network::Network) = network.nodes
 numnodes(network::Network) = length(network.nodes)
-self_weight(node::Node) = node.weight
+self_weight(node::Node) = node.self
 numclusters(clustering::Clustering) = length(clustering.clusters)
 
 function Clustering(network::Network)
@@ -67,7 +69,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 end
 
 total_weight(network::Network, nodeid::Int64) = total_weight(network, network.nodes[nodeid])
-total_weight(network::Network, node::Node) = self_weight(node) + sum(edge -> edge.weight, view(network.edges, node.edges)) #CACHE
+total_weight(network::Network, node::Node) = node.weight
 total_weight(network::Network) = network.totw
 
 function cluster_weights(clustering::Clustering, nodeid::Int64)
@@ -76,7 +78,7 @@ function cluster_weights(clustering::Clustering, nodeid::Int64)
 	network = clustering.network
 	node = network.nodes[nodeid]
 	ci = clustering.nodecluster[nodeid]
-	counts[ci] += self_weight(node)
+#	counts[ci] += self_weight(node)
 
 	@inbounds for e in view(network.edges, node.edges)
 		cj = clustering.nodecluster[e.node]
@@ -87,11 +89,14 @@ function cluster_weights(clustering::Clustering, nodeid::Int64)
 end
 
 function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	delta = @inbounds begin
-		from = clustering.nodecluster[nodeid]
-		kin[to] - ki * clustering.clusters[to].w_tot / totw
+	@inbounds from = clustering.nodecluster[nodeid]
+	if from == to
+		0.0
+	else
+		@inbounds delta = (-kin[from] + (clustering.clusters[from].w_tot*ki)/totw) +
+					 (kin[to] - (clustering.clusters[to].w_tot*ki)/totw) - ki^2/totw
+		2delta / totw
 	end
-	2delta / totw
 end
 
 function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
@@ -104,23 +109,25 @@ function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
 end
 
 function modularity(clustering::Clustering)
-	totw = total_weight(clustering.network) #CACHE
+	totw = total_weight(clustering.network)
 	@inline modularity(c::Cluster) = c.w_in/totw - (c.w_tot/totw)^2
 	sum(modularity, clustering.clusters)
 end
 
 function adjust_cluster(cluster::Cluster, kin::Float64, ki::Float64)
-	w_in = cluster.w_in + kin
+	w_in = cluster.w_in + 2kin
 	w_out = cluster.w_tot + ki
 	Cluster(w_in, w_out)
 end
 
 function move_node!(clustering::Clustering, nodeid::Int64, to::Int64)
-	from = clustering.nodecluster[nodeid]
-
 	kin = cluster_weights(clustering, nodeid)
 	ki = total_weight(clustering.network, nodeid)
+	move_node!(clustering, nodeid, to, kin, ki)
+end
 
+function move_node!(clustering::Clustering, nodeid::Int64, to::Int64, kin::Vector{Float64}, ki::Float64)
+	from = clustering.nodecluster[nodeid]
 	clustering.clusters[from] = adjust_cluster(clustering.clusters[from], -kin[from], -ki)
 	clustering.clusters[to] = adjust_cluster(clustering.clusters[to], kin[to], ki)
 	clustering.nodecluster[nodeid] = to
@@ -156,12 +163,14 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 	edges_so_far = 0
 	@inbounds for i in 1:nnodes
 		selfweight = 0.0
+		weight = 0.0
 		edgesstart = edges_so_far + 1
 
 		r = nzrange(snn, i)
 		@inbounds for j in r
 			rv, nz = rowvals(snn)[j], nonzeros(snn)[j]
 			totw += nz
+			weight += nz
 
 			if rv == i
 				#selfweight = nz
@@ -171,37 +180,64 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 			end
 		end
 
-		nodes[i] = Node(selfweight, edgesstart:edges_so_far)
+		nodes[i] = Node(selfweight, weight, edgesstart:edges_so_far)
 	end
 
 	Network(nodes, edges, totw)
 end
 
-function Base.argmax(f, itr)
-	r = iterate(itr)
-	r === nothing && error("empty collection")
-	m, state = r
-	f_m = f(m)
-	while true
-		r = iterate(itr, state)
-		r === nothing && break
-		x, state = r
-		f_x = f(x)
-		isless(f_m, f_x) || continue
-		m, f_m = x, f_x
+function reduced_network(clustering::Clustering)
+	nnodes = numclusters(clustering)
+	nodes = Vector{Node}(undef, nnodes)
+	edges = Vector{Edge}(undef, nedges)
+
+	for i in 1:nnodes
+		nodes[i] = clustering.clusters[]
 	end
-	return m
 end
+
+Base.findmax(f, itr) = mapfoldl(x -> (f(x), x), _rf_findmax, itr)
+_rf_findmax((fm, m), (fx, x)) = isless(fm, fx) ? (fx, x) : (fm, m)
 
 function best_local_move(clustering::Clustering, nodeid::Int64)
 	totw = total_weight(clustering.network)
 	kin = cluster_weights(clustering, nodeid)
 	ki = total_weight(clustering.network, nodeid)
+	best_local_move(clustering, nodeid, kin, ki, totw)
+end
 
-	argmax(1:length(kin)) do neighbour_cluster
+function best_local_move(clustering::Clustering, nodeid::Int64, kin::Vector{Float64}, ki::Float64, totw::Float64)
+	findmax(1:length(kin)) do neighbour_cluster
 		@inbounds kin[neighbour_cluster] > 0.0 || return 0.0
 		modularity_gain(clustering, nodeid, neighbour_cluster, kin, ki, totw)
 	end
+end
+
+function local_move!(clustering::Clustering)
+	network = clustering.network
+	N = numnodes(network)
+	totw = total_weight(clustering.network)
+
+	order = shuffle(1:N)
+
+	total_gain = 0.0
+	stable = false
+	while ! stable
+		stable = true
+		for nodeid in order
+			kin = cluster_weights(clustering, nodeid) #PREALLOC
+			ki = total_weight(clustering.network, nodeid)
+
+			gain, bestcl = best_local_move(clustering, nodeid, kin, ki, totw)
+			if gain != 0.0
+				move_node!(clustering, nodeid, bestcl, kin, ki)
+				total_gain += gain
+				stable = false
+			end
+		end
+	end
+
+	total_gain
 end
 
 import SparseArrays: sparse
