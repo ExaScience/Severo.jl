@@ -88,7 +88,11 @@ function cluster_weights(clustering::Clustering, nodeid::Int64)
 	counts
 end
 
-function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64, kin::Vector{Float64}, ki::Float64, totw::Float64)
+function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
+	totw = total_weight(clustering.network)
+	kin = cluster_weights(clustering, nodeid)
+	ki = total_weight(clustering.network, nodeid)
+
 	@inbounds from = clustering.nodecluster[nodeid]
 	if from == to
 		0.0
@@ -97,15 +101,6 @@ function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64, kin::
 					 (kin[to] - (clustering.clusters[to].w_tot*ki)/totw) - ki^2/totw
 		2delta / totw
 	end
-end
-
-function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
-	totw = total_weight(clustering.network)
-
-	kin = cluster_weights(clustering, nodeid)
-	ki = total_weight(clustering.network, nodeid)
-
-	modularity_gain(clustering, nodeid, to, kin, ki, totw)
 end
 
 function modularity(clustering::Clustering)
@@ -207,9 +202,18 @@ function best_local_move(clustering::Clustering, nodeid::Int64)
 end
 
 function best_local_move(clustering::Clustering, nodeid::Int64, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	findmax(1:length(kin)) do neighbour_cluster
-		@inbounds kin[neighbour_cluster] > 0.0 || return 0.0
-		modularity_gain(clustering, nodeid, neighbour_cluster, kin, ki, totw)
+	@inbounds from = clustering.nodecluster[nodeid]
+
+	(delta, idx) = findmax(1:length(kin)) do neighbour_cluster
+		@inbounds (neighbour_cluster != from && kin[neighbour_cluster] > 0.0) || return 0.0
+		@inbounds kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+	end
+
+	if delta != 0.0
+		@inbounds delta += -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
+		(2delta / totw, idx)
+	else
+		(-1.0, 0)
 	end
 end
 
@@ -219,6 +223,7 @@ function local_move!(clustering::Clustering)
 	totw = total_weight(clustering.network)
 
 	order = shuffle(1:N)
+	mod_pre = modularity(clustering)
 
 	total_gain = 0.0
 	stable = false
@@ -229,7 +234,7 @@ function local_move!(clustering::Clustering)
 			ki = total_weight(clustering.network, nodeid)
 
 			gain, bestcl = best_local_move(clustering, nodeid, kin, ki, totw)
-			if gain != 0.0
+			if gain > 0.0
 				move_node!(clustering, nodeid, bestcl, kin, ki)
 				total_gain += gain
 				stable = false
@@ -237,6 +242,8 @@ function local_move!(clustering::Clustering)
 		end
 	end
 
+	mod_post = modularity(clustering)
+	println("$total_gain ≈ $(mod_post - mod_pre)")
 	total_gain
 end
 
