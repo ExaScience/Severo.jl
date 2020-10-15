@@ -73,13 +73,30 @@ total_weight(network::Network, nodeid::Int64) = total_weight(network, network.no
 total_weight(network::Network, node::Node) = node.weight
 total_weight(network::Network) = network.totw
 
+function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64)
+	network = clustering.network
+	node = network.nodes[nodeid]
+
+	fill!(kin, 0.0)
+	empty!(neighbourcls)
+
+	@inbounds for e in view(network.edges, node.edges)
+		cj = clustering.nodecluster[e.node]
+		if kin[cj] == 0.0
+			push!(neighbourcls, cj)
+		end
+
+		kin[cj] += e.weight
+	end
+
+	length(neighbourcls)
+end
+
 function cluster_weights(clustering::Clustering, nodeid::Int64)
 	counts = zeros(Float64, numclusters(clustering))
 
 	network = clustering.network
 	node = network.nodes[nodeid]
-	ci = clustering.nodecluster[nodeid]
-#	counts[ci] += self_weight(node)
 
 	@inbounds for e in view(network.edges, node.edges)
 		cj = clustering.nodecluster[e.node]
@@ -231,33 +248,37 @@ _rf_findmax((fm, m), (fx, x)) = isless(fm, fx) ? (fx, x) : (fm, m)
 
 function best_local_move(clustering::Clustering, nodeid::Int64)
 	totw = total_weight(clustering.network)
-	kin = cluster_weights(clustering, nodeid)
 	ki = total_weight(clustering.network, nodeid)
-	best_local_move(clustering, nodeid, kin, ki, totw)
+
+	kin = Vector{Float64}(undef, numclusters(clustering))
+	neighbourcls = Vector{Int64}()
+	sizehint!(neighbourcls, numclusters(clustering))
+
+	cluster_weights!(kin, neighbourcls, clustering, nodeid)
+	best_local_move(clustering, nodeid, neighbourcls, kin, ki, totw)
 end
 
-function best_local_move(clustering::Clustering, nodeid::Int64, kin::Vector{Float64}, ki::Float64, totw::Float64)
+function best_local_move(clustering::Clustering, nodeid::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
 	@inbounds from = clustering.nodecluster[nodeid]
 
-	(delta, idx) = findmax(1:length(kin)) do neighbour_cluster
-		@inbounds (neighbour_cluster != from && kin[neighbour_cluster] > 0.0) || return 0.0
+	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
 		@inbounds kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
 	end
 
-	if delta != 0.0
-		@inbounds delta += -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
-		(2delta / totw, idx)
-	else
-		(-1.0, 0)
-	end
+	@inbounds delta += -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
+	(2delta / totw, idx)
 end
 
 function local_move!(clustering::Clustering)
 	network = clustering.network
-	N = numnodes(network)
 	totw = total_weight(clustering.network)
 
-	order = shuffle(1:N)
+	order = shuffle(1:numnodes(network))
+	kin = Vector{Float64}(undef, numclusters(clustering))
+
+	neighbourcls = Vector{Int64}()
+	sizehint!(neighbourcls, numclusters(clustering))
+
 	mod_pre = modularity(clustering)
 
 	total_gain = 0.0
@@ -265,10 +286,10 @@ function local_move!(clustering::Clustering)
 	while ! stable
 		stable = true
 		for nodeid in order
-			kin = cluster_weights(clustering, nodeid) #PREALLOC
+			cluster_weights!(kin, neighbourcls, clustering, nodeid)
 			ki = total_weight(clustering.network, nodeid)
 
-			gain, bestcl = best_local_move(clustering, nodeid, kin, ki, totw)
+			gain, bestcl = best_local_move(clustering, nodeid, neighbourcls, kin, ki, totw)
 			if gain > 0.0
 				move_node!(clustering, nodeid, bestcl, kin, ki)
 				total_gain += gain
