@@ -13,8 +13,10 @@ end
 
 include("clustering.jl")
 include("neighbours.jl")
+include("modularity.jl")
 
 Z = h5read("/data/mca_res.h5", "/pca/embeddings")[:,1:10]
 snn = compute_snn(Z, 20)
 
-assignment = modularity_cluster(snn; resolution=0.5)
+@time assignment = modularity_cluster(snn; resolution=1.0, nrandomstarts=1)
+@time cl = louvain(Network(snn))
