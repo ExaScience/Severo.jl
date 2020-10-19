@@ -360,19 +360,13 @@ end
 function louvain!(clustering::Clustering; min_modularity=0.0001)
 	numnodes(clustering) > 1 || return clustering
 
-	mod_pre = modularity(clustering)
-	n_pre = numclusters(clustering)
 	local_move!(clustering; min_modularity=min_modularity)
 	renumber!(clustering)
-	mod_half = modularity(clustering)
-	n_half = numclusters(clustering)
 
 	if numclusters(clustering) < numnodes(clustering)
 		reduced_clustering = louvain(reduced_network(clustering); min_modularity=min_modularity)
 		clustering = merge!(clustering, reduced_clustering)
 	end
-	mod_final = modularity(clustering)
-	println("$(numnodes(clustering)): $mod_pre $mod_half $mod_final - $n_pre $n_half $(numclusters(clustering))")
 
 	clustering
 end
@@ -410,4 +404,5 @@ end
 
 
 n = Network(A)
-cl = Clustering(n)
+cl = louvain(n)
+println(modularity(cl))
