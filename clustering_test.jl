@@ -15,9 +15,12 @@ include("clustering.jl")
 include("neighbours.jl")
 include("modularity.jl")
 
-Z = h5read("/data/mca_res.h5", "/pca/embeddings")[:,1:10]
-snn = compute_snn(Z, 20)
+#Z = h5read("/data/mca_res.h5", "/pca/embeddings")[:,1:10]
+#snn = compute_snn(Z, 20)
+snn = read_sparse("/data/mca_res.h5", "/snn")
 
 @time assignment = modularity_cluster(snn; resolution=1.0, nrandomstarts=1)
 n = Network(snn)
-@time cl = louvain(n)
+Random.seed!(123456)
+@time cl = louvain(n; min_modularity=0.0)
+@assert modularity(cl) ≈ 0.8943628471615616

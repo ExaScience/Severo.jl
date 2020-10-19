@@ -79,10 +79,14 @@ total_weight(network::Network, node::Node) = node.weight
 total_weight(network::Network) = network.totw
 
 function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64)
+	# clear old
+	for neighbour in neighbourcls
+		kin[neighbour] = 0.0
+	end
+	empty!(neighbourcls)
+
 	network = clustering.network
 	node = network.nodes[nodeid]
-
-	empty!(neighbourcls)
 
 	@inbounds for e in alledges(network, node)
 		cj = clustering.nodecluster[e.node]
@@ -186,15 +190,12 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 		r = nzrange(snn, i)
 		@inbounds for j in r
 			rv, nz = rowvals(snn)[j], nonzeros(snn)[j]
+			rv == i && continue
+
 			totw += nz
 			weight += nz
-
-			if rv == i
-				#selfweight = nz
-			else
-				edges_so_far += 1
-				edges[edges_so_far] = Edge(rv, nz)
-			end
+			edges_so_far += 1
+			edges[edges_so_far] = Edge(rv, nz)
 		end
 
 		nodes[i] = Node(selfweight, weight, edgesstart:edges_so_far)
@@ -240,11 +241,13 @@ function reduced_network(clustering::Clustering)
 			push!(edges, Edge(j, w))
 		end
 
+		#XXX self_weight = w_in from cluster
 		weight += self_weight
 		nodes[i] = Node(self_weight, weight, edge_start:length(edges))
 		totw += weight
 	end
 
+	#XXX totw = network.totw
 	Network(nodes, edges, totw)
 end
 
@@ -258,8 +261,9 @@ function Base.findmax(f, itr)
 		r === nothing && break
 		x, state = r
 		f_x = f(x)
-		isless(f_m, f_x) || continue
-		m, f_m = x, f_x
+		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
+			m, f_m = x, f_x
+		end
 	end
 	(f_m, m)
 end
@@ -268,11 +272,31 @@ function best_local_move(clustering::Clustering, nodeid::Int64, neighbourcls::Ve
 	@inbounds from = clustering.nodecluster[nodeid]
 
 	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
-		@inbounds kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+		@inbounds delta = kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+		if from == neighbour_cluster # XXX remove this
+			delta += ki^2/totw
+		end
+
+		if nodeid == 0
+			println("$neighbour_cluster $delta $(kin[neighbour_cluster]) $(clustering.clusters[neighbour_cluster].w_tot) $ki")
+		end
+
+		delta
 	end
 
 	@inbounds delta += -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
 	(2delta / totw, idx)
+end
+
+function gainz(clustering::Clustering, nodeid::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
+	@inbounds from = clustering.nodecluster[nodeid]
+
+	delta = map(neighbourcls) do neighbour_cluster
+		@inbounds kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+	end
+
+	@inbounds delta .+= -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
+	2 .* delta ./ totw
 end
 
 function local_move!(clustering::Clustering; min_modularity=0.0001)
@@ -284,8 +308,6 @@ function local_move!(clustering::Clustering; min_modularity=0.0001)
 
 	neighbourcls = Vector{Int64}()
 	sizehint!(neighbourcls, numclusters(clustering))
-
-	mod_pre = modularity(clustering)
 
 	delta_mod = min_modularity
 	total_gain = 0.0
@@ -304,17 +326,11 @@ function local_move!(clustering::Clustering; min_modularity=0.0001)
 				delta_mod += gain
 				stable = false
 			end
-
-			for neighbour in neighbourcls
-				kin[neighbour] = 0.0
-			end
 		end
 
 		total_gain += delta_mod
 	end
 
-	mod_post = modularity(clustering)
-	println("$total_gain ≈ $(mod_post - mod_pre) $mod_post")
 	total_gain
 end
 
@@ -360,22 +376,38 @@ end
 function louvain!(clustering::Clustering; min_modularity=0.0001)
 	numnodes(clustering) > 1 || return clustering
 
-	local_move!(clustering; min_modularity=min_modularity)
+	gain = local_move!(clustering; min_modularity=min_modularity)
 	renumber!(clustering)
 
 	if numclusters(clustering) < numnodes(clustering)
-		reduced_clustering = louvain(reduced_network(clustering); min_modularity=min_modularity)
+		reduced_clustering = Clustering(reduced_network(clustering))
+		gain += louvain!(reduced_clustering; min_modularity=min_modularity)
 		clustering = merge!(clustering, reduced_clustering)
 	end
+
+	gain
+end
+
+function louvain(network::Network; min_modularity=0.0001, max_iterations=10)
+	clustering = Clustering(network)
+	mod_pre = modularity(clustering)
+
+	total_gain = gain = louvain!(clustering; min_modularity=min_modularity)
+
+	iter = 1
+	while gain >= min_modularity && iter <= max_iterations
+		gain = louvain!(clustering; min_modularity=min_modularity)
+		total_gain += gain
+		iter += 1
+	end
+
+	mod_post = modularity(clustering)
+	println("$total_gain ≈ $(mod_post - mod_pre) $mod_post")
 
 	clustering
 end
 
-function louvain(network::Network; min_modularity=0.0001)
-	clustering = Clustering(network)
-	louvain!(clustering; min_modularity=min_modularity)
-end
-
+#=
 A = begin
 	indices = [ 1,  2,  3,  4,  5,  6,  7,  8, 10, 11, 12, 13, 17, 19, 21, 31,  0,
 	2,  3,  7, 13, 17, 19, 21, 30,  0,  1,  3,  7,  8,  9, 13, 27, 28,
@@ -406,3 +438,4 @@ end
 n = Network(A)
 cl = louvain(n)
 println(modularity(cl))
+=#
