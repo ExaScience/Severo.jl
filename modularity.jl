@@ -37,6 +37,9 @@ self_weight(node::Node) = node.self
 numclusters(clustering::Clustering) = clustering.nclusters
 numnodes(clustering::Clustering) = numnodes(clustering.network)
 
+alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
+alledges(network::Network, node::Node) = view(network.edges, node.edges)
+
 function Clustering(network::Network)
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
@@ -57,7 +60,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 
 			node = network.nodes[i]
 			w_in += self_weight(node)
-			for e in view(network.edges, node.edges)
+			for e in alledges(network, node)
 				if nodecluster[e.node] == ci
 					w_in += e.weight
 				else
@@ -81,7 +84,7 @@ function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clu
 
 	empty!(neighbourcls)
 
-	@inbounds for e in view(network.edges, node.edges)
+	@inbounds for e in alledges(network, node)
 		cj = clustering.nodecluster[e.node]
 		if kin[cj] == 0.0
 			push!(neighbourcls, cj)
@@ -99,7 +102,7 @@ function cluster_weights(clustering::Clustering, nodeid::Int64)
 	network = clustering.network
 	node = network.nodes[nodeid]
 
-	@inbounds for e in view(network.edges, node.edges)
+	@inbounds for e in alledges(network, node)
 		cj = clustering.nodecluster[e.node]
 		counts[cj] += e.weight
 	end
@@ -216,18 +219,18 @@ function reduced_network(clustering::Clustering)
 		self_weight = 0.0
 		weight = 0.0
 
-		for (node, clus) in zip(network.nodes, clustering.nodecluster)
+		for (nodeid, clus) in enumerate(clustering.nodecluster)
 			clus == i || continue
 
-			@inbounds for e in view(network.edges, node.edges)
+			self_weight += network.nodes[nodeid].self
+			@inbounds for e in alledges(network, nodeid)
 				clust_to = clustering.nodecluster[e.node]
 				if clust_to == i
 					self_weight += e.weight
 				else
 					reducedEdges[clust_to] += e.weight
+					weight += e.weight
 				end
-
-				weight += e.weight
 			end
 		end
 
@@ -237,6 +240,7 @@ function reduced_network(clustering::Clustering)
 			push!(edges, Edge(j, w))
 		end
 
+		weight += self_weight
 		nodes[i] = Node(self_weight, weight, edge_start:length(edges))
 		totw += weight
 	end
@@ -378,32 +382,32 @@ function louvain(network::Network; min_modularity=0.0001)
 	louvain!(clustering; min_modularity=min_modularity)
 end
 
-import SparseArrays: sparse
-A = sparse(Float64[
-	1  1  1  1  0  0  0  0  0
-	1  1  1  0  0  0  0  0  0
-	1  1  1  0  0  0  0  0  0
-	1  0  0  1  1  0  0  0  0
-	0  0  0  1  1  1  1  0  0
-	0  0  0  0  1  1  0  0  0
-	0  0  0  0  1  0  1  1  0
-	0  0  0  0  0  0  1  1  1
-	0  0  0  0  0  0  0  1  1
-])
+A = begin
+	indices = [ 1,  2,  3,  4,  5,  6,  7,  8, 10, 11, 12, 13, 17, 19, 21, 31,  0,
+	2,  3,  7, 13, 17, 19, 21, 30,  0,  1,  3,  7,  8,  9, 13, 27, 28,
+	32,  0,  1,  2,  7, 12, 13,  0,  6, 10,  0,  6, 10, 16,  0,  4,  5,
+	16,  0,  1,  2,  3,  0,  2, 30, 32, 33,  2, 33,  0,  4,  5,  0,  0,
+	3,  0,  1,  2,  3, 33, 32, 33, 32, 33,  5,  6,  0,  1, 32, 33,  0,
+	1, 33, 32, 33,  0,  1, 32, 33, 25, 27, 29, 32, 33, 25, 27, 31, 23,
+	24, 31, 29, 33,  2, 23, 24, 33,  2, 31, 33, 23, 26, 32, 33,  1,  8,
+	32, 33,  0, 24, 25, 28, 32, 33,  2,  8, 14, 15, 18, 20, 22, 23, 29,
+	30, 31, 33,  8,  9, 13, 14, 15, 18, 19, 20, 22, 23, 26, 27, 28, 29,
+	30, 31, 32]
+	indptr = [  0,  16,  25,  35,  41,  44,  48,  52,  56,  61,  63,  66,  67,
+	69,  74,  76,  78,  80,  82,  84,  87,  89,  91,  93,  98, 101,
+	104, 106, 110, 113, 117, 121, 127, 139, 156]
+	data = Float64[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1]
+	dim = (34, 34)
+	SparseMatrixCSC(dim[1], dim[2], indptr .+ 1, indices .+ 1, data)
+end
 
-B = sparse([
-	0.0       1.01857  0.316248  0.782568  0.0       0.0       0.0       0.0      0.0
-	1.01857   0.0      1.04075   0.0       0.0       0.0       0.0       0.0      0.0
-	0.316248  1.04075  0.0       0.0       0.0       0.0       0.0       0.0      0.0
-	0.782568  0.0      0.0       0.0       0.724342  0.0       0.0       0.0      0.0
-	0.0       0.0      0.0       0.724342  0.0       0.708958  0.171639  0.0      0.0
-	0.0       0.0      0.0       0.0       0.708958  0.0       0.0       0.0      0.0
-	0.0       0.0      0.0       0.0       0.171639  0.0       0.0       1.08373  0.0
-	0.0       0.0      0.0       0.0       0.0       0.0       1.08373   0.0      1.61592
-	0.0       0.0      0.0       0.0       0.0       0.0       0.0       1.61592  0.0
-])
 
-n = Network(B)
+n = Network(A)
 cl = Clustering(n)
-cl_best = Clustering(n, [1, 1, 1, 2, 2, 2, 3, 3, 3])
-println("$((modularity(cl), modularity(cl_best))) <-> (-0.12295272686262723, 0.529828)")
