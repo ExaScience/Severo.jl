@@ -7,7 +7,6 @@ struct Edge
 end
 
 struct Node
-	self::Float64 #REMOVE
 	weight::Float64
 	edges::UnitRange{Int64} #REMOVE?
 end
@@ -16,6 +15,7 @@ struct Network
 	nodes::Vector{Node}
 	edges::Vector{Edge}
 	totw::Float64
+	tot_self::Float64
 end
 
 struct Cluster
@@ -32,7 +32,6 @@ end
 nodes(network::Network) = network.nodes
 numnodes(network::Network) = length(network.nodes)
 numedges(network::Network) = length(network.edges)
-self_weight(node::Node) = node.self
 numclusters(clustering::Clustering) = clustering.nclusters
 numnodes(clustering::Clustering) = numnodes(clustering.network)
 
@@ -56,11 +55,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 		@inbounds for i in 1:numnodes(network)
 			nodecluster[i] == ci || continue
 
-			node = network.nodes[i]
-			w_tot += self_weight(node)
-			for e in alledges(network, node)
-				w_tot += e.weight
-			end
+			w_tot += total_weight(network, i)
 		end
 		Cluster(w_tot)
 	end
@@ -127,12 +122,11 @@ function sum_w_in(clustering::Clustering)
 	network = clustering.network
 	nodecluster = clustering.nodecluster
 
-	sum_w_in = 0.0
+	sum_w_in = network.tot_self
 	@inbounds for nodeid in 1:numnodes(network)
 		ci = nodecluster[nodeid]
 
 		node = network.nodes[nodeid]
-		sum_w_in += self_weight(node)
 		for e in alledges(network, node)
 			if nodecluster[e.node] == ci
 				sum_w_in += e.weight
@@ -193,9 +187,9 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 	edges = Vector{Edge}(undef, nedges)
 
 	totw = 0.0
+	tot_self = 0.0
 	edges_so_far = 0
 	@inbounds for i in 1:nnodes
-		selfweight = 0.0
 		weight = 0.0
 		edgesstart = edges_so_far + 1
 
@@ -210,10 +204,10 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 			edges[edges_so_far] = Edge(rv, nz)
 		end
 
-		nodes[i] = Node(selfweight, weight, edgesstart:edges_so_far)
+		nodes[i] = Node(weight, edgesstart:edges_so_far)
 	end
 
-	Network(nodes, edges, totw)
+	Network(nodes, edges, totw, tot_self)
 end
 
 function reduced_network(clustering::Clustering)
@@ -224,7 +218,9 @@ function reduced_network(clustering::Clustering)
 	edges = Vector{Edge}()
 	sizehint!(edges, min(nnodes^2, numedges(network)))
 
-	totw = 0.0
+	totw = total_weight(network)
+	tot_self = network.tot_self
+
 	reducedEdges = Vector{Float64}(undef, nnodes)
 	for i in 1:nnodes
 		fill!(reducedEdges, 0.0)
@@ -235,14 +231,13 @@ function reduced_network(clustering::Clustering)
 		for (nodeid, clus) in enumerate(clustering.nodecluster) #XXX
 			clus == i || continue
 
-			self_weight += network.nodes[nodeid].self
+			weight += total_weight(network, nodeid)
 			@inbounds for e in alledges(network, nodeid)
 				clust_to = clustering.nodecluster[e.node]
 				if clust_to == i
-					self_weight += e.weight
+					tot_self += e.weight
 				else
 					reducedEdges[clust_to] += e.weight
-					weight += e.weight
 				end
 			end
 		end
@@ -253,13 +248,11 @@ function reduced_network(clustering::Clustering)
 			push!(edges, Edge(j, w))
 		end
 
-		weight += self_weight
-		nodes[i] = Node(self_weight, weight, edge_start:length(edges))
-		totw += weight
+		nodes[i] = Node(weight, edge_start:length(edges))
 	end
 
 	#XXX totw = network.totw
-	Network(nodes, edges, totw)
+	Network(nodes, edges, totw, tot_self)
 end
 
 function Base.findmax(f, itr)
