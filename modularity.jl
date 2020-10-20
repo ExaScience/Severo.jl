@@ -19,7 +19,6 @@ struct Network
 end
 
 struct Cluster
-	w_in::Float64 #REMOVE modularity shouldn't be called often
 	w_tot::Float64
 end
 
@@ -43,9 +42,8 @@ alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edge
 function Clustering(network::Network)
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
-		w_in = self_weight(node)
 		w_tot = total_weight(network, node)
-		Cluster(w_in, w_tot)
+		Cluster(w_tot)
 	end
 
 	Clustering(network, nodecluster, clusters, numnodes(network))
@@ -54,21 +52,17 @@ end
 function Clustering(network::Network, nodecluster::Vector{Int64})
 	num_clusters = length(unique(nodecluster))
 	clusters = map(1:num_clusters) do ci
-		w_in = w_out = 0.0
+		w_tot = 0.0
 		@inbounds for i in 1:numnodes(network)
 			nodecluster[i] == ci || continue
 
 			node = network.nodes[i]
-			w_in += self_weight(node)
+			w_tot += self_weight(node)
 			for e in alledges(network, node)
-				if nodecluster[e.node] == ci
-					w_in += e.weight
-				else
-					w_out += e.weight
-				end
+				w_tot += e.weight
 			end
 		end
-		Cluster(w_in, w_in + w_out)
+		Cluster(w_tot)
 	end
 
 	Clustering(network, nodecluster, clusters, num_clusters)
@@ -129,16 +123,34 @@ function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
 	end
 end
 
+function sum_w_in(clustering::Clustering)
+	network = clustering.network
+	nodecluster = clustering.nodecluster
+
+	sum_w_in = 0.0
+	@inbounds for nodeid in 1:numnodes(network)
+		ci = nodecluster[nodeid]
+
+		node = network.nodes[nodeid]
+		sum_w_in += self_weight(node)
+		for e in alledges(network, node)
+			if nodecluster[e.node] == ci
+				sum_w_in += e.weight
+			end
+		end
+	end
+
+	sum_w_in
+end
+
 function modularity(clustering::Clustering)
 	totw = total_weight(clustering.network)
-	@inline modularity(c::Cluster) = c.w_in/totw - (c.w_tot/totw)^2
-	sum(i -> modularity(clustering.clusters[i]), 1:numclusters(clustering))
+	sum_w_in(clustering)/totw - sum((c.w_tot/totw)^2 for c in clustering.clusters)
 end
 
 function adjust_cluster(cluster::Cluster, kin::Float64, ki::Float64)
-	w_in = cluster.w_in + 2kin
-	w_out = cluster.w_tot + ki
-	Cluster(w_in, w_out)
+	w_tot = cluster.w_tot + ki
+	Cluster(w_tot)
 end
 
 function move_node!(clustering::Clustering, nodeid::Int64, to::Int64)
@@ -241,7 +253,6 @@ function reduced_network(clustering::Clustering)
 			push!(edges, Edge(j, w))
 		end
 
-		#XXX self_weight = w_in from cluster
 		weight += self_weight
 		nodes[i] = Node(self_weight, weight, edge_start:length(edges))
 		totw += weight
@@ -357,7 +368,7 @@ function renumber!(clustering::Clustering)
 	end
 
 	for i in id:length(clustering.clusters)
-		clustering.clusters[i] = Cluster(0.0, 0.0)
+		clustering.clusters[i] = Cluster(0.0)
 	end
 
 	clustering.nclusters = id - 1
