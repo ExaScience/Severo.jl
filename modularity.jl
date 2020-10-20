@@ -20,6 +20,7 @@ end
 
 mutable struct Clustering
 	network::Network
+	resolution::Float64
 	nodecluster::Vector{Int64}
 	w_tot::Vector{Float64}
 	nclusters::Int64
@@ -38,16 +39,16 @@ total_weight(network::Network) = network.totw
 alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
 alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edges)
 
-function Clustering(network::Network)
+function Clustering(network::Network, resolution::Float64=0.8)
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
 		total_weight(network, node)
 	end
 
-	Clustering(network, nodecluster, clusters, numnodes(network))
+	Clustering(network, resolution, nodecluster, clusters, numnodes(network))
 end
 
-function Clustering(network::Network, nodecluster::Vector{Int64})
+function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Float64=0.8)
 	num_clusters = length(unique(nodecluster))
 	clusters = map(1:num_clusters) do ci
 		w_tot = 0.0
@@ -59,7 +60,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 		w_tot
 	end
 
-	Clustering(network, nodecluster, clusters, num_clusters)
+	Clustering(network, resolution, nodecluster, clusters, num_clusters)
 end
 
 function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64, ci::Int64)
@@ -112,7 +113,7 @@ end
 
 function modularity(clustering::Clustering)
 	totw = total_weight(clustering.network)
-	sum_w_in(clustering)/totw - sum((x/totw)^2 for x in clustering.w_tot)
+	sum_w_in(clustering)/totw - clustering.resolution * sum((x/totw)^2 for x in clustering.w_tot)
 end
 
 function remove_node!(clustering::Clustering, nodeid::Int64, ki::Float64)
@@ -255,10 +256,10 @@ function Base.findmax(f, itr, init)
 end
 
 function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	@inbounds init = kin[ci] - (clustering.w_tot[ci]*ki)/totw
+	@inbounds init = kin[ci] - clustering.resolution * (clustering.w_tot[ci]*ki)/totw
 
 	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
-		@inbounds kin[neighbour_cluster] - (clustering.w_tot[neighbour_cluster]*ki)/totw
+		@inbounds kin[neighbour_cluster] - clustering.resolution * (clustering.w_tot[neighbour_cluster]*ki)/totw
 	end
 
 	(2(delta - init) / totw, idx)
@@ -357,8 +358,8 @@ function louvain!(clustering::Clustering; min_modularity=0.0001)
 	gain
 end
 
-function louvain(network::Network; min_modularity=0.0001, max_iterations=10)
-	clustering = Clustering(network)
+function louvain(network::Network; resolution::Float64=0.8, min_modularity::Float64=0.0001, max_iterations::Int64=10)
+	clustering = Clustering(network, resolution)
 
 	total_gain = gain = louvain!(clustering; min_modularity=min_modularity)
 
