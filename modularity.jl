@@ -18,14 +18,10 @@ struct Network
 	tot_self::Float64
 end
 
-struct Cluster
-	w_tot::Float64
-end
-
 mutable struct Clustering
 	network::Network
 	nodecluster::Vector{Int64}
-	clusters::Vector{Cluster}
+	w_tot::Vector{Float64}
 	nclusters::Int64
 end
 
@@ -41,8 +37,7 @@ alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edge
 function Clustering(network::Network)
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
-		w_tot = total_weight(network, node)
-		Cluster(w_tot)
+		total_weight(network, node)
 	end
 
 	Clustering(network, nodecluster, clusters, numnodes(network))
@@ -57,7 +52,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 
 			w_tot += total_weight(network, i)
 		end
-		Cluster(w_tot)
+		w_tot
 	end
 
 	Clustering(network, nodecluster, clusters, num_clusters)
@@ -112,8 +107,8 @@ function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
 	if from == to
 		0.0
 	else
-		@inbounds delta = (-kin[from] + (clustering.clusters[from].w_tot*ki)/totw) +
-					 (kin[to] - (clustering.clusters[to].w_tot*ki)/totw) - ki^2/totw
+		@inbounds delta = (-kin[from] + (w_tot[from]*ki)/totw) +
+					 (kin[to] - (w_tot[to]*ki)/totw) - ki^2/totw
 		2delta / totw
 	end
 end
@@ -139,12 +134,7 @@ end
 
 function modularity(clustering::Clustering)
 	totw = total_weight(clustering.network)
-	sum_w_in(clustering)/totw - sum((c.w_tot/totw)^2 for c in clustering.clusters)
-end
-
-function adjust_cluster(cluster::Cluster, kin::Float64, ki::Float64)
-	w_tot = cluster.w_tot + ki
-	Cluster(w_tot)
+	sum_w_in(clustering)/totw - sum((x/totw)^2 for x in clustering.w_tot)
 end
 
 function move_node!(clustering::Clustering, nodeid::Int64, to::Int64)
@@ -154,10 +144,12 @@ function move_node!(clustering::Clustering, nodeid::Int64, to::Int64)
 end
 
 function move_node!(clustering::Clustering, nodeid::Int64, to::Int64, kin::Vector{Float64}, ki::Float64)
-	from = clustering.nodecluster[nodeid]
-	clustering.clusters[from] = adjust_cluster(clustering.clusters[from], -kin[from], -ki)
-	clustering.clusters[to] = adjust_cluster(clustering.clusters[to], kin[to], ki)
-	clustering.nodecluster[nodeid] = to
+	@inbounds begin
+		from = clustering.nodecluster[nodeid]
+		clustering.w_tot[from] -= ki
+		clustering.w_tot[to] += ki
+		clustering.nodecluster[nodeid] = to
+	end
 	clustering
 end
 
@@ -276,19 +268,14 @@ function best_local_move(clustering::Clustering, nodeid::Int64, neighbourcls::Ve
 	@inbounds from = clustering.nodecluster[nodeid]
 
 	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
-		@inbounds delta = kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+		@inbounds delta = kin[neighbour_cluster] - (clustering.w_tot[neighbour_cluster]*ki)/totw
 		if from == neighbour_cluster # XXX remove this
 			delta += ki^2/totw
 		end
-
-		if nodeid == 0
-			println("$neighbour_cluster $delta $(kin[neighbour_cluster]) $(clustering.clusters[neighbour_cluster].w_tot) $ki")
-		end
-
 		delta
 	end
 
-	@inbounds delta += -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
+	@inbounds delta += -kin[from] + (clustering.w_tot[from]*ki)/totw - ki^2/totw
 	(2delta / totw, idx)
 end
 
@@ -296,10 +283,10 @@ function gainz(clustering::Clustering, nodeid::Int64, neighbourcls::Vector{Int64
 	@inbounds from = clustering.nodecluster[nodeid]
 
 	delta = map(neighbourcls) do neighbour_cluster
-		@inbounds kin[neighbour_cluster] - (clustering.clusters[neighbour_cluster].w_tot*ki)/totw
+		@inbounds kin[neighbour_cluster] - (clustering.w_tot[neighbour_cluster]*ki)/totw
 	end
 
-	@inbounds delta .+= -kin[from] + (clustering.clusters[from].w_tot*ki)/totw - ki^2/totw
+	@inbounds delta .+= -kin[from] + (clustering.w_tot[from]*ki)/totw - ki^2/totw
 	2 .* delta ./ totw
 end
 
@@ -352,16 +339,16 @@ function renumber!(clustering::Clustering)
 		clustering.nodecluster[i] = c
 	end
 
-	for i in 1:length(clustering.clusters)
-		c, p = clustering.clusters[i], labels[i]
+	for i in 1:length(clustering.w_tot)
+		c, p = clustering.w_tot[i], labels[i]
 		while p != i && p != 0
-			c, clustering.clusters[p] = clustering.clusters[p], c
+			c, clustering.w_tot[p] = clustering.w_tot[p], c
 			p = labels[p]
 		end
 	end
 
-	for i in id:length(clustering.clusters)
-		clustering.clusters[i] = Cluster(0.0)
+	for i in id:length(clustering.w_tot)
+		clustering.w_tot[i] = 0.0
 	end
 
 	clustering.nclusters = id - 1
@@ -372,7 +359,7 @@ function merge!(clustering::Clustering, cluster_reduced::Clustering)
 	for i in 1:length(clustering.nodecluster)
 		clustering.nodecluster[i] = cluster_reduced.nodecluster[clustering.nodecluster[i]]
 	end
-	clustering.clusters = cluster_reduced.clusters
+	clustering.w_tot = cluster_reduced.w_tot
 	clustering.nclusters = cluster_reduced.nclusters
 	clustering
 end
