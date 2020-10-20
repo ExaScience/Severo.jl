@@ -31,6 +31,10 @@ numedges(network::Network) = length(network.edges)
 numclusters(clustering::Clustering) = clustering.nclusters
 numnodes(clustering::Clustering) = numnodes(clustering.network)
 
+total_weight(network::Network, nodeid::Int64) = total_weight(network, network.nodes[nodeid])
+total_weight(network::Network, node::Node) = node.weight
+total_weight(network::Network) = network.totw
+
 alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
 alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edges)
 
@@ -58,21 +62,14 @@ function Clustering(network::Network, nodecluster::Vector{Int64})
 	Clustering(network, nodecluster, clusters, num_clusters)
 end
 
-total_weight(network::Network, nodeid::Int64) = total_weight(network, network.nodes[nodeid])
-total_weight(network::Network, node::Node) = node.weight
-total_weight(network::Network) = network.totw
-
-function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64)
+function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64, ci::Int64)
 	# clear old
 	@inbounds for neighbour in neighbourcls
 		kin[neighbour] = 0.0
 	end
 	empty!(neighbourcls)
 
-	network = clustering.network
-	@inbounds node = network.nodes[nodeid]
-
-	@inbounds for e in alledges(network, node)
+	@inbounds for e in alledges(clustering.network, nodeid)
 		cj = clustering.nodecluster[e.node]
 		if kin[cj] == 0.0
 			push!(neighbourcls, cj)
@@ -80,37 +77,18 @@ function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clu
 
 		kin[cj] += e.weight
 	end
-
-	length(neighbourcls)
 end
 
 function cluster_weights(clustering::Clustering, nodeid::Int64)
 	counts = zeros(Float64, numclusters(clustering))
 
 	network = clustering.network
-	node = network.nodes[nodeid]
-
-	@inbounds for e in alledges(network, node)
+	@inbounds for e in alledges(network, nodeid)
 		cj = clustering.nodecluster[e.node]
 		counts[cj] += e.weight
 	end
 
 	counts
-end
-
-function modularity_gain(clustering::Clustering, nodeid::Int64, to::Int64)
-	totw = total_weight(clustering.network)
-	kin = cluster_weights(clustering, nodeid)
-	ki = total_weight(clustering.network, nodeid)
-
-	@inbounds from = clustering.nodecluster[nodeid]
-	if from == to
-		0.0
-	else
-		@inbounds delta = (-kin[from] + (w_tot[from]*ki)/totw) +
-					 (kin[to] - (w_tot[to]*ki)/totw) - ki^2/totw
-		2delta / totw
-	end
 end
 
 function sum_w_in(clustering::Clustering)
@@ -137,20 +115,16 @@ function modularity(clustering::Clustering)
 	sum_w_in(clustering)/totw - sum((x/totw)^2 for x in clustering.w_tot)
 end
 
-function move_node!(clustering::Clustering, nodeid::Int64, to::Int64)
-	kin = cluster_weights(clustering, nodeid)
-	ki = total_weight(clustering.network, nodeid)
-	move_node!(clustering, nodeid, to, kin, ki)
+function remove_node!(clustering::Clustering, nodeid::Int64, ki::Float64)
+	@inbounds from = clustering.nodecluster[nodeid]
+	@inbounds clustering.w_tot[from] -= ki
+	@inbounds clustering.nodecluster[nodeid] = 0
+	from
 end
 
-function move_node!(clustering::Clustering, nodeid::Int64, to::Int64, kin::Vector{Float64}, ki::Float64)
-	@inbounds begin
-		from = clustering.nodecluster[nodeid]
-		clustering.w_tot[from] -= ki
-		clustering.w_tot[to] += ki
-		clustering.nodecluster[nodeid] = to
-	end
-	clustering
+function insert_node!(clustering::Clustering, nodeid::Int64, to::Int64, ki::Float64)
+	@inbounds clustering.w_tot[to] += ki
+	@inbounds clustering.nodecluster[nodeid] = to
 end
 
 function checksquare(A)
@@ -243,7 +217,6 @@ function reduced_network(clustering::Clustering)
 		nodes[i] = Node(weight, edge_start:length(edges))
 	end
 
-	#XXX totw = network.totw
 	Network(nodes, edges, totw, tot_self)
 end
 
@@ -264,30 +237,31 @@ function Base.findmax(f, itr)
 	(f_m, m)
 end
 
-function best_local_move(clustering::Clustering, nodeid::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	@inbounds from = clustering.nodecluster[nodeid]
+function Base.findmax(f, itr, init)
+	f_m, m = init
 
-	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
-		@inbounds delta = kin[neighbour_cluster] - (clustering.w_tot[neighbour_cluster]*ki)/totw
-		if from == neighbour_cluster # XXX remove this
-			delta += ki^2/totw
+	r = iterate(itr)
+	while r !== nothing
+		x, state = r
+		f_x = f(x)
+		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
+			m, f_m = x, f_x
 		end
-		delta
+
+		r = iterate(itr, state)
 	end
 
-	@inbounds delta += -kin[from] + (clustering.w_tot[from]*ki)/totw - ki^2/totw
-	(2delta / totw, idx)
+	(f_m, m)
 end
 
-function gainz(clustering::Clustering, nodeid::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	@inbounds from = clustering.nodecluster[nodeid]
+function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
+	@inbounds init = kin[ci] - (clustering.w_tot[ci]*ki)/totw
 
-	delta = map(neighbourcls) do neighbour_cluster
+	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
 		@inbounds kin[neighbour_cluster] - (clustering.w_tot[neighbour_cluster]*ki)/totw
 	end
 
-	@inbounds delta .+= -kin[from] + (clustering.w_tot[from]*ki)/totw - ki^2/totw
-	2 .* delta ./ totw
+	(2(delta - init) / totw, idx)
 end
 
 function local_move!(clustering::Clustering; min_modularity=0.0001)
@@ -308,14 +282,18 @@ function local_move!(clustering::Clustering; min_modularity=0.0001)
 		stable = true
 
 		for nodeid in order
-			cluster_weights!(kin, neighbourcls, clustering, nodeid)
 			ki = total_weight(clustering.network, nodeid)
+			ci = remove_node!(clustering, nodeid, ki)
 
-			gain, bestcl = best_local_move(clustering, nodeid, neighbourcls, kin, ki, totw)
+			cluster_weights!(kin, neighbourcls, clustering, nodeid, ci)
+
+			gain, bestcl = best_local_move(clustering, ci, neighbourcls, kin, ki, totw)
 			if gain > 0.0
-				move_node!(clustering, nodeid, bestcl, kin, ki)
+				insert_node!(clustering, nodeid, bestcl, ki)
 				delta_mod += gain
 				stable = false
+			else
+				insert_node!(clustering, nodeid, ci, ki)
 			end
 		end
 
@@ -381,7 +359,6 @@ end
 
 function louvain(network::Network; min_modularity=0.0001, max_iterations=10)
 	clustering = Clustering(network)
-	mod_pre = modularity(clustering)
 
 	total_gain = gain = louvain!(clustering; min_modularity=min_modularity)
 
@@ -391,9 +368,6 @@ function louvain(network::Network; min_modularity=0.0001, max_iterations=10)
 		total_gain += gain
 		iter += 1
 	end
-
-	mod_post = modularity(clustering)
-	println("$total_gain ≈ $(mod_post - mod_pre) $mod_post")
 
 	clustering
 end
