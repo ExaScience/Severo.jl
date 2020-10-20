@@ -7,9 +7,9 @@ struct Edge
 end
 
 struct Node
-	self::Float64
+	self::Float64 #REMOVE
 	weight::Float64
-	edges::UnitRange{Int64}
+	edges::UnitRange{Int64} #REMOVE?
 end
 
 struct Network
@@ -38,7 +38,7 @@ numclusters(clustering::Clustering) = clustering.nclusters
 numnodes(clustering::Clustering) = numnodes(clustering.network)
 
 alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
-alledges(network::Network, node::Node) = view(network.edges, node.edges)
+alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edges)
 
 function Clustering(network::Network)
 	nodecluster = collect(1:numnodes(network))
@@ -80,13 +80,13 @@ total_weight(network::Network) = network.totw
 
 function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64)
 	# clear old
-	for neighbour in neighbourcls
+	@inbounds for neighbour in neighbourcls
 		kin[neighbour] = 0.0
 	end
 	empty!(neighbourcls)
 
 	network = clustering.network
-	node = network.nodes[nodeid]
+	@inbounds node = network.nodes[nodeid]
 
 	@inbounds for e in alledges(network, node)
 		cj = clustering.nodecluster[e.node]
@@ -220,7 +220,7 @@ function reduced_network(clustering::Clustering)
 		self_weight = 0.0
 		weight = 0.0
 
-		for (nodeid, clus) in enumerate(clustering.nodecluster)
+		for (nodeid, clus) in enumerate(clustering.nodecluster) #XXX
 			clus == i || continue
 
 			self_weight += network.nodes[nodeid].self
