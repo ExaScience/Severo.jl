@@ -1,5 +1,5 @@
 import SparseArrays: SparseMatrixCSC, rowvals, nzrange, nonzeros, nnz
-import Random: shuffle
+import Random: shuffle, default_rng, AbstractRNG
 
 struct Edge
 	node::Int64
@@ -221,7 +221,7 @@ function reduced_network(clustering::Clustering)
 	Network(nodes, edges, totw, tot_self)
 end
 
-function Base.findmax(f, itr)
+function _findmax(f, itr)
 	r = iterate(itr)
 	r === nothing && error("empty collection")
 	m, state = r
@@ -238,38 +238,21 @@ function Base.findmax(f, itr)
 	(f_m, m)
 end
 
-function Base.findmax(f, itr, init)
-	f_m, m = init
-
-	r = iterate(itr)
-	while r !== nothing
-		x, state = r
-		f_x = f(x)
-		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
-			m, f_m = x, f_x
-		end
-
-		r = iterate(itr, state)
-	end
-
-	(f_m, m)
-end
-
 function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
 	@inbounds init = kin[ci] - clustering.resolution * (clustering.w_tot[ci]*ki)/totw
 
-	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
+	(delta, idx) = _findmax(neighbourcls) do neighbour_cluster
 		@inbounds kin[neighbour_cluster] - clustering.resolution * (clustering.w_tot[neighbour_cluster]*ki)/totw
 	end
 
 	(2(delta - init) / totw, idx)
 end
 
-function local_move!(clustering::Clustering; min_modularity=0.0001)
+function local_move!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.0001)
 	network = clustering.network
 	totw = total_weight(clustering.network)
 
-	order = shuffle(1:numnodes(network))
+	order = shuffle(rng, 1:numnodes(network))
 	kin = zeros(Float64, numclusters(clustering))
 
 	neighbourcls = Vector{Int64}()
@@ -343,10 +326,10 @@ function merge!(clustering::Clustering, cluster_reduced::Clustering)
 	clustering
 end
 
-function louvain!(clustering::Clustering; min_modularity=0.0001)
+function louvain!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.0001)
 	numnodes(clustering) > 1 || return clustering
 
-	gain = local_move!(clustering; min_modularity=min_modularity)
+	gain = local_move!(rng, clustering; min_modularity=min_modularity)
 	renumber!(clustering)
 
 	if numclusters(clustering) < numnodes(clustering)
@@ -358,14 +341,17 @@ function louvain!(clustering::Clustering; min_modularity=0.0001)
 	gain
 end
 
-function louvain(network::Network; resolution::Float64=0.8, min_modularity::Float64=0.0001, max_iterations::Int64=10)
-	clustering = Clustering(network, resolution)
+louvain!(clustering::Clustering; kw...) = louvain!(default_rng(), clustering; kw...)
 
-	total_gain = gain = louvain!(clustering; min_modularity=min_modularity)
+function louvain(rng::AbstractRNG, network::Network;
+		resolution::Float64=0.8, min_modularity::Float64=0.0001, max_iterations::Int64=10)
+
+	clustering = Clustering(network, resolution)
+	total_gain = gain = louvain!(rng, clustering; min_modularity=min_modularity)
 
 	iter = 1
 	while gain >= min_modularity && iter <= max_iterations
-		gain = louvain!(clustering; min_modularity=min_modularity)
+		gain = louvain!(rng, clustering; min_modularity=min_modularity)
 		total_gain += gain
 		iter += 1
 	end
@@ -373,6 +359,7 @@ function louvain(network::Network; resolution::Float64=0.8, min_modularity::Floa
 	clustering
 end
 
+louvain(network::Network; kw...) = louvain(default_rng(), network; kw...)
 #=
 A = begin
 	indices = [ 1,  2,  3,  4,  5,  6,  7,  8, 10, 11, 12, 13, 17, 19, 21, 31,  0,
