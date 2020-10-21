@@ -347,12 +347,11 @@ function louvain(rng::AbstractRNG, network::Network;
 		resolution::Float64=0.8, min_modularity::Float64=0.0001, max_iterations::Int64=10)
 
 	clustering = Clustering(network, resolution)
-	total_gain = gain = louvain!(rng, clustering; min_modularity=min_modularity)
+	gain = louvain!(rng, clustering; min_modularity=min_modularity)
 
 	iter = 1
 	while gain >= min_modularity && iter <= max_iterations
 		gain = louvain!(rng, clustering; min_modularity=min_modularity)
-		total_gain += gain
 		iter += 1
 	end
 
@@ -360,6 +359,27 @@ function louvain(rng::AbstractRNG, network::Network;
 end
 
 louvain(network::Network; kw...) = louvain(default_rng(), network; kw...)
+
+function louvain_multi(rng::AbstractRNG, network::Network, nrandomstarts::Int64; verbose::Bool=false, kw...)
+	m = louvain(rng, network; kw...)
+	f_m = modularity(m)
+	verbose && println("1: $f_m")
+
+	for i in 2:nrandomstarts
+		x = louvain(rng, network; kw...)
+		f_x = modularity(x)
+		verbose && println("$i: $f_x; current best $f_m")
+
+		if isless(f_m, f_x)
+			m, f_m = x, f_x
+		end
+	end
+
+	m
+end
+
+louvain_multi(network::Network, nrandomstarts::Int64; kw...) = louvain_multi(default_rng(), network, nrandomstarts; kw...)
+
 #=
 A = begin
 	indices = [ 1,  2,  3,  4,  5,  6,  7,  8, 10, 11, 12, 13, 17, 19, 21, 31,  0,
