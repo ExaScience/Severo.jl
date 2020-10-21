@@ -2,6 +2,7 @@ using HDF5
 using LinearAlgebra
 using Printf
 using SparseArrays
+using Random
 
 function read_sparse(fname, dataset="/data")
 	p = h5read(fname, @sprintf("%s/indptr", dataset))
@@ -22,5 +23,5 @@ snn = read_sparse("/data/mca_res.h5", "/snn")
 @time assignment = modularity_cluster(snn; resolution=1.0, nrandomstarts=1)
 n = Network(snn)
 Random.seed!(123456)
-@time cl = louvain(n; min_modularity=0.0)
+@time cl = louvain(n; resolution=1.0, min_modularity=0.0)
 @assert modularity(cl) ≈ 0.8943628471615616

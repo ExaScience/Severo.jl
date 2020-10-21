@@ -39,7 +39,7 @@ total_weight(network::Network) = network.totw
 alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
 alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edges)
 
-function Clustering(network::Network, resolution::Float64=0.8)
+function Clustering(network::Network, resolution::Float64)
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
 		total_weight(network, node)
@@ -48,7 +48,7 @@ function Clustering(network::Network, resolution::Float64=0.8)
 	Clustering(network, resolution, nodecluster, clusters, numnodes(network))
 end
 
-function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Float64=0.8)
+function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Float64)
 	num_clusters = length(unique(nodecluster))
 	clusters = map(1:num_clusters) do ci
 		w_tot = 0.0
@@ -333,7 +333,7 @@ function louvain!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.000
 	renumber!(clustering)
 
 	if numclusters(clustering) < numnodes(clustering)
-		reduced_clustering = Clustering(reduced_network(clustering))
+		reduced_clustering = Clustering(reduced_network(clustering), clustering.resolution)
 		gain += louvain!(reduced_clustering; min_modularity=min_modularity)
 		clustering = merge!(clustering, reduced_clustering)
 	end
