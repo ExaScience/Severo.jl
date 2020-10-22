@@ -196,3 +196,9 @@ function convert_data(X::AbstractMatrix, features::AbstractVector, barcodes::Abs
 
 	NamedArray(copy(X'), (barcodes, features), (:cells, :features))
 end
+
+function convert_data(X::AbstractMatrix)
+	genes = [string("gene-", i) for i in 1:size(X,1)]
+	barcodes = [string("cell-", i) for i in 1:size(X,2)]
+	NamedArray(copy(X'), (barcodes, genes), (:cells, :features))
+end
