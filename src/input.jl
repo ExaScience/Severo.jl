@@ -181,15 +181,15 @@ end
 
 function read_10X(dirname::AbstractString; unique_features=true)
 	X, features, barcodes = _read_10X(dirname)
-	convert_data(X, features, barcodes, unique_features=unique_features)
+	convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
 function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features=true)
 	X, features, barcodes = _read_10X_h5(fname, dataset)
-	convert_data(X, features, barcodes, unique_features=unique_features)
+	convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
-function convert_data(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features=true)
+function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features=true)
 	if unique_features
 		make_unique!(features, features)
 	end
@@ -197,8 +197,32 @@ function convert_data(X::AbstractMatrix, features::AbstractVector, barcodes::Abs
 	NamedArray(copy(X'), (barcodes, features), (:cells, :features))
 end
 
-function convert_data(X::AbstractMatrix)
+function convert_counts(X::AbstractMatrix)
 	genes = [string("gene-", i) for i in 1:size(X,1)]
 	barcodes = [string("cell-", i) for i in 1:size(X,2)]
 	NamedArray(copy(X'), (barcodes, genes), (:cells, :features))
+end
+
+function filter_counts(A::CountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
+	features_per_cell = vec(sum(A .> min_feature_count, dims=2))
+	CI = (features_per_cell .>= min_features)
+
+	if min_umi > 0
+		CI .&= (vec(sum(A, dims=2)) .> min_umi)
+	end
+
+	A = A[CI,:]
+
+	cells_per_feature = vec(sum(A .> 0, dims=1))
+	FI = (cells_per_feature .>= min_cells)
+
+	A[:, FI], CI, FI
+	#  A[CI, FI] # faster but slightly different
+end
+
+function filter_counts(A::NamedCountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
+	counts, CI, FI = filter_counts(A.array; min_cells=min_cells, min_features=min_features, min_feature_count=min_feature_count, min_umi=min_umi)
+	barcodes = names(A, 1)[CI]
+	features = names(A, 2)[FI]
+	NamedArray(counts, (barcodes, features), (:cells, :features))
 end
