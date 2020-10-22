@@ -1,7 +1,6 @@
 import CSV
 import GZip
 import HDF5: h5open, attrs, exists
-import SparseArrays: sparse, SparseMatrixCSC
 
 struct MMParseError <: Exception
 	msg::AbstractString
@@ -38,6 +37,14 @@ function parseMM_header(mm::IO)
 	eltype
 end
 
+function skipMM_comments(mm::IO)
+	ll = readline(mm)
+	while length(ll) == 0 || ll[1] == '%'
+		ll = readline(mm)
+	end
+	ll
+end
+
 function parseMM_comments(mm::IO)
 	comments = []
 
@@ -52,7 +59,12 @@ end
 
 function readMM(mm::IO; read_comments::Bool=false)
 	eltype = parseMM_header(mm)
-	ll, comments = parseMM_comments(mm)
+
+	ll, comments = if read_comments
+		parseMM_comments(mm)
+	else
+		skipMM_comments(mm), nothing
+	end
 
 	parseint(x) = parse(Int64, x)
 
@@ -102,7 +114,7 @@ struct ParseError_10X <: Exception
 	msg::AbstractString
 end
 
-function read_10X_h5(fname::String, dataset::String="/mm10")
+function _read_10X_h5(fname::String, dataset::String="/mm10")
 	h5open(fname, "r") do f
 		feature_slot = if !exists(attrs(f), "PYTABLES_FORMAT_VERSION")
 			"/features/name"
@@ -124,7 +136,7 @@ function read_10X_h5(fname::String, dataset::String="/mm10")
 			X = SparseMatrixCSC(dim[1], dim[2], p .+ 1, i .+ 1, x)
 			X, features, barcodes
 		catch e
-			if isa(e, ErrorException)
+			if isa(e, ErrorException) # probably HDF5 error
 				throw(ParseError_10X("Failed to load dataset $dataset: $(e.msg)"))
 			else
 				rethrow(e)
@@ -147,7 +159,7 @@ function readDelim(fname::AbstractString; kw...)
 	end
 end
 
-function read_10X(dirname::String)
+function _read_10X(dirname::AbstractString)
 	if ! isdir(dirname)
 		throw(ParseError_10X("Directory $dirname does not exist"))
 	end
@@ -165,4 +177,22 @@ function read_10X(dirname::String)
 	barcodes = readlines(barcodes_file)
 	features = readDelim(feature_file, header=false)[:,2]
 	X, features, barcodes
+end
+
+function read_10X(dirname::AbstractString; unique_features=true)
+	X, features, barcodes = _read_10X(dirname)
+	convert_data(X, features, barcodes, unique_features=unique_features)
+end
+
+function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+	X, features, barcodes = _read_10X_h5(fname, dataset)
+	convert_data(X, features, barcodes, unique_features=unique_features)
+end
+
+function convert_data(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features=true)
+	if unique_features
+		make_unique!(features, features)
+	end
+
+	NamedArray(copy(X'), (barcodes, features), (:cells, :features))
 end
