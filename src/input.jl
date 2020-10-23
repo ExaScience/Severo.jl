@@ -184,12 +184,12 @@ end
 
 Read count matrix from 10X genomics
 
-# Arguments
+**Arguments**:
 
 - `dirname`: path to directory containing matrix.mtx, genes.tsv (or features.tsv), and barcodes.tsv from 10X
 - `unique_features`: should feature names be made unique (default: true)
 
-# Returns values
+**Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
@@ -203,13 +203,13 @@ end
 
 Read count matrix from 10X CellRanger hdf5 file.
 
-# Arguments
+**Arguments**:
 
 - `fname`: path to hdf5 file
 - `dataset`: name of dataset to load (default: "mm10")
 - `unique_features`: should feature names be made unique (default: true)
 
-# Returns values
+**Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
@@ -223,14 +223,14 @@ end
 
 Convert a count matrix and labels into its labeled representation
 
-# Arguments
+**Arguments**:
 
 - `X`: a count matrix (features x barcodes)
 - `features`: list of feature names
 - `barcodes`: list of barcodes
 - `unique_features`: should feature names be made unique (default: true)
 
-# Returns values
+**Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
@@ -252,11 +252,11 @@ end
 
 Convert a count matrix into its labeled representation by generating unique labels
 
-# Arguments
+**Arguments**:
 
 - `X`: a count matrix (features x barcodes)
 
-# Returns values
+**Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
@@ -271,7 +271,7 @@ end
 
 Filter a count matrix, removing cells and features for which the metrics fall below the given threshold
 
-# Arguments:
+**Arguments**:
 
 	- `A`: the count matrix
 	- `min_cells`: include features detected in at least this many cells
@@ -279,7 +279,7 @@ Filter a count matrix, removing cells and features for which the metrics fall be
 	- `min_features_count`: threshold on the count for which a feature is marked "detected"
 	- `min_umi`: include cells where the total of umi counts is at least this value
 
-# Return value:
+**Return value**:
 
 The filtered matrix with cells and features removed
 """
@@ -307,7 +307,7 @@ end
 
 Filter a labeled count matrix, removing cells and features for which the metrics fall below the given threshold
 
-# Arguments:
+**Arguments**:
 
 	- `A`: the count matrix
 	- `min_cells`: include features detected in at least this many cells
@@ -315,7 +315,7 @@ Filter a labeled count matrix, removing cells and features for which the metrics
 	- `min_features_count`: threshold on the count for which a feature is marked "detected"
 	- `min_umi`: include cells where the total of umi counts is at least this value
 
-# Return value:
+**Return value**:
 
 The filtered, labeled matrix with cells and features removed
 """
