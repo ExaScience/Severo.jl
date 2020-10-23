@@ -1,10 +1,12 @@
+__precompile__()
+
 module Cell
 
 import SparseArrays: sparse, SparseMatrixCSC
 import NamedArrays: NamedArray
 
-CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Signed}
-NamedCountMatrix{T} = NamedArray{T} where {T <: Signed}
+CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
+NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
 
 include("utils.jl")
 include("input.jl")

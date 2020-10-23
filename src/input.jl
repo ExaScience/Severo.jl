@@ -179,17 +179,67 @@ function _read_10X(dirname::AbstractString)
 	X, features, barcodes
 end
 
-function read_10X(dirname::AbstractString; unique_features=true)
+"""
+	read_10X(dirname::AbstractString; unique_features=true)
+
+Read count matrix from 10X genomics
+
+# Arguments
+
+- `dirname`: path to directory containing matrix.mtx, genes.tsv (or features.tsv), and barcodes.tsv from 10X
+- `unique_features`: should feature names be made unique (default: true)
+
+# Returns values
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_10X(dirname::AbstractString; unique_features::Bool=true)
 	X, features, barcodes = _read_10X(dirname)
 	convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
-function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+"""
+	read_10X_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+
+Read count matrix from 10X CellRanger hdf5 file.
+
+# Arguments
+
+- `fname`: path to hdf5 file
+- `dataset`: name of dataset to load (default: "mm10")
+- `unique_features`: should feature names be made unique (default: true)
+
+# Returns values
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features::Bool=true)
 	X, features, barcodes = _read_10X_h5(fname, dataset)
 	convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
-function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features=true)
+"""
+	convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features::Bool=true)
+
+Convert a count matrix and labels into its labeled representation
+
+# Arguments
+
+- `X`: a count matrix (features x barcodes)
+- `features`: list of feature names
+- `barcodes`: list of barcodes
+- `unique_features`: should feature names be made unique (default: true)
+
+# Returns values
+
+Returns labeled sparse matrix containing the counts
+"""
+function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features::Bool=true)
+	if !isa(eltype(X), Integer)
+		@warn "count matrices should be integers, trying to convert from $(eltype(X))"
+		X = convert(AbstractMatrix{Int64}, X)
+	end
+
 	if unique_features
 		make_unique!(features, features)
 	end
@@ -197,12 +247,42 @@ function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::A
 	NamedArray(copy(X'), (barcodes, features), (:cells, :features))
 end
 
+"""
+	convert_counts(X::AbstractMatrix)
+
+Convert a count matrix into its labeled representation by generating unique labels
+
+# Arguments
+
+- `X`: a count matrix (features x barcodes)
+
+# Returns values
+
+Returns labeled sparse matrix containing the counts
+"""
 function convert_counts(X::AbstractMatrix)
 	genes = [string("gene-", i) for i in 1:size(X,1)]
 	barcodes = [string("cell-", i) for i in 1:size(X,2)]
 	NamedArray(copy(X'), (barcodes, genes), (:cells, :features))
 end
 
+"""
+	filter_counts(A::CountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
+
+Filter a count matrix, removing cells and features for which the metrics fall below the given threshold
+
+# Arguments:
+
+	- `A`: the count matrix
+	- `min_cells`: include features detected in at least this many cells
+	- `min_features`: include cells where at least this many features are detected
+	- `min_features_count`: threshold on the count for which a feature is marked "detected"
+	- `min_umi`: include cells where the total of umi counts is at least this value
+
+# Return value:
+
+The filtered matrix with cells and features removed
+"""
 function filter_counts(A::CountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
 	features_per_cell = vec(sum(A .> min_feature_count, dims=2))
 	CI = (features_per_cell .>= min_features)
@@ -211,7 +291,9 @@ function filter_counts(A::CountMatrix; min_cells=0, min_features=0, min_feature_
 		CI .&= (vec(sum(A, dims=2)) .> min_umi)
 	end
 
-	A = A[CI,:]
+	if !all(CI)
+		A = A[CI,:]
+	end
 
 	cells_per_feature = vec(sum(A .> 0, dims=1))
 	FI = (cells_per_feature .>= min_cells)
@@ -220,9 +302,25 @@ function filter_counts(A::CountMatrix; min_cells=0, min_features=0, min_feature_
 	#  A[CI, FI] # faster but slightly different
 end
 
+"""
+	filter_counts(A::NamedCountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
+
+Filter a labeled count matrix, removing cells and features for which the metrics fall below the given threshold
+
+# Arguments:
+
+	- `A`: the count matrix
+	- `min_cells`: include features detected in at least this many cells
+	- `min_features`: include cells where at least this many features are detected
+	- `min_features_count`: threshold on the count for which a feature is marked "detected"
+	- `min_umi`: include cells where the total of umi counts is at least this value
+
+# Return value:
+
+The filtered, labeled matrix with cells and features removed
+"""
 function filter_counts(A::NamedCountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
 	counts, CI, FI = filter_counts(A.array; min_cells=min_cells, min_features=min_features, min_feature_count=min_feature_count, min_umi=min_umi)
-	barcodes = names(A, 1)[CI]
-	features = names(A, 2)[FI]
-	NamedArray(counts, (barcodes, features), (:cells, :features))
+	barcodes, features = names(A)
+	NamedArray(counts, (barcodes[CI], features[FI]), (:cells, :features))
 end
