@@ -6,6 +6,9 @@ const SUITE = BenchmarkGroup()
 include("benchmark_utils.jl")
 SUITE["utils"] = utils
 
+include("benchmark_input.jl")
+SUITE["input"] = input
+
 #=
 tune!(SUITE)
 results = run(SUITE, verbose=true, seconds=10)
