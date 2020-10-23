@@ -35,3 +35,27 @@ function make_unique!(out::AbstractVector{T}, names::AbstractVector{T}, sep::Abs
 end
 
 make_unique(names::AbstractVector{T}, sep::AbstractString=".") where {T <: AbstractString} = make_unique!(similar(names), names, sep)
+
+function counting_sort(v::AbstractVector, M::Integer)
+	counts = zeros(Int64, M)
+	for x in v
+			counts[x] += 1
+	end
+
+	ax = axes(v, 1)
+	ix = similar(Vector{eltype(ax)}, ax)
+
+	tot = 1
+	for (i,c) in enumerate(counts)
+			counts[i] = tot
+			tot += c
+	end
+
+	for (i,x) in enumerate(v)
+			j = counts[x]
+			ix[j] = i
+			counts[x] += 1
+	end
+
+	ix,counts
+end
