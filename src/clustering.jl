@@ -35,6 +35,10 @@ Cluster cells based on a neighbourhood graph.
 cluster assignment per cell
 """
 function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=1, niterations=10)
+    if isa(algorithm, AbstractString)
+        algorithm = Symbol(algorithm)
+    end
+
     assignment = if algorithm == :louvaincpp
         modularity_cluster(SNN.array, algorithm=1, resolution=resolution, nrandomstarts=nstarts, niterations=niterations)
     elseif algorithm == :louvain
