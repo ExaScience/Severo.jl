@@ -17,12 +17,27 @@ import Distributions: Poisson, rand
     ])
     C = convert_counts(X)
     C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
+
     @test size(C) == (7, 4)
     @test names(C,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-8", "cell-9"]
     @test names(C,2) == [ "gene-1", "gene-2", "gene-4", "gene-5"]
+end
+
+@testset "normalize" begin
+    X = sparse(Int64[
+        0  0  5  3  0  0  0  0  0  2
+        0  1  0  0  0  0  0  3  0  0
+        0  0  0  0  6  0  0  0  0  0
+        3  0  0  0  2  0  0  0  0  0
+        0  6  0  0  0  0  2  0  3  0
+    ])
+    C = convert_counts(X)
+    C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
 
     Q = normalize(C; method=:relativecounts)
     @test all(sum(Q, dims=2) .≈ 1.0)
+    @test names(Q,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-8", "cell-9"]
+    @test names(Q,2) == [ "gene-1", "gene-2", "gene-4", "gene-5"]
 
     Q2 = normalize(C; method=:lognormalize)
     all(Q2 .≈ log1p.(Q))
@@ -30,3 +45,24 @@ import Distributions: Poisson, rand
     Q = normalize(C; method="relativecounts", scale_factor=10.)
     @test all(sum(Q, dims=2) .≈ 10.0)
 end
+
+@testset "scaling" begin
+    X = sparse(Int64[
+        0  0  5  3  0  0  0  0  0  2
+        0  1  0  0  0  0  0  3  0  0
+        0  0  0  0  6  0  0  0  0  0
+        3  0  0  0  2  0  0  0  0  0
+        0  6  0  0  0  0  2  0  3  0
+    ])
+    C = convert_counts(X)
+
+    S, mu = scale(C)
+    @test names(S,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-6", "cell-7", "cell-8", "cell-9", "cell-10"]
+    @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
+    @test names(mu,1) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
+
+    X_mu, X_std = Cell.mean_std(X')
+    @test (X_mu ./ X_std) ≈ mu
+    @test Matrix((X' .- X_mu') ./ X_std') ≈ Matrix(S .- mu')
+end
+

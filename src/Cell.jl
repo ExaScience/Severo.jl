@@ -22,12 +22,13 @@ end
 include("utils.jl")
 include("input.jl")
 include("normalize.jl")
+include("scaling.jl")
 include("neighbours.jl")
 include("clustering.jl")
 
 export CountMatrix, NamedCountMatrix, DataMatrix, NamedDataMatrix
 export read_10X, read_10X_h5, convert_counts, filter_counts
-export normalize
+export normalize, scale
 export nearest_neigbours, shared_nearest_neigbours
 export cluster
 end # module
