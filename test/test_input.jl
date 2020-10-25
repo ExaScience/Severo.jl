@@ -20,4 +20,13 @@ import Distributions: Poisson, rand
     @test size(C) == (7, 4)
     @test names(C,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-8", "cell-9"]
     @test names(C,2) == [ "gene-1", "gene-2", "gene-4", "gene-5"]
+
+    Q = normalize(C; method=:relativecounts)
+    @test all(sum(Q, dims=2) .≈ 1.0)
+
+    Q2 = normalize(C; method=:lognormalize)
+    all(Q2 .≈ log1p.(Q))
+
+    Q = normalize(C; method=:relativecounts, scale_factor=10.)
+    @test all(sum(Q, dims=2) .≈ 10.0)
 end
