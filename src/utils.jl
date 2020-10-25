@@ -38,7 +38,7 @@ make_unique(names::AbstractVector{T}, sep::AbstractString=".") where {T <: Abstr
 
 function counting_sort(v::AbstractVector, M::Integer)
     counts = zeros(Int64, M)
-    for x in v
+    @inbounds for x in v
         counts[x] += 1
     end
 
@@ -46,16 +46,32 @@ function counting_sort(v::AbstractVector, M::Integer)
     ix = similar(Vector{eltype(ax)}, ax)
 
     tot = 1
-    for (i,c) in enumerate(counts)
+    @inbounds for (i,c) in enumerate(counts)
         counts[i] = tot
         tot += c
     end
 
-    for (i,x) in enumerate(v)
+    @inbounds for (i,x) in enumerate(v)
         j = counts[x]
         ix[j] = i
         counts[x] += 1
     end
 
     ix,counts
+end
+
+function rep_each(x::AbstractVector{Tv}, each::AbstractVector{Ti}) where {Tv, Ti <: Integer}
+    @assert length(x) == length(each)
+    r = similar(x, sum(each))
+
+    idx = 1
+    for j in eachindex(x)
+        @inbounds v = x[j]
+        @inbounds for i in 1:each[j]
+            r[idx] = v
+            idx += 1
+        end
+    end
+
+    r
 end
