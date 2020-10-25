@@ -9,8 +9,8 @@ SUITE["utils"] = utils
 include("benchmark_input.jl")
 SUITE["input"] = input
 
-#=
-tune!(SUITE)
-results = run(SUITE, verbose=true, seconds=10)
-BenchmarkTools.save("benchmarks.json", results)
-=#
+if abspath(PROGRAM_FILE) == @__FILE__
+	tune!(SUITE)
+	results = run(SUITE, verbose=true, seconds=10)
+	BenchmarkTools.save("benchmarks.json", results)
+end
