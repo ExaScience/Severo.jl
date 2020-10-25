@@ -11,6 +11,12 @@ NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
 DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
 NamedDataMatrix{T} = NamedArray{T} where {T <: Integer}
 
+try
+    include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
+catch e
+    error("Cell.jl not properly configured, please run `Pkg.build(\"Cell\")`.")
+end
+
 include("utils.jl")
 include("input.jl")
 include("normalize.jl")
