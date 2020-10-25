@@ -27,6 +27,6 @@ import Distributions: Poisson, rand
     Q2 = normalize(C; method=:lognormalize)
     all(Q2 .≈ log1p.(Q))
 
-    Q = normalize(C; method=:relativecounts, scale_factor=10.)
+    Q = normalize(C; method="relativecounts", scale_factor=10.)
     @test all(sum(Q, dims=2) .≈ 10.0)
 end
