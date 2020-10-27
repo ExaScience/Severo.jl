@@ -85,7 +85,7 @@ NamedCenteredMatrix{P,T,R} = CenteredMatrix{P,T,R} where {P, T <: NamedArray, R 
 
 import Base: eltype, size, adjoint, show, IO, convert
 import LinearAlgebra: mul!, dot, axpy!
-eltype(S::CenteredMatrix) = eltype(S.A)
+eltype(S::CenteredMatrix{P, T, R}) where {P,T,R} = P
 size(S::CenteredMatrix) = size(S.A)
 adjoint(S::CenteredMatrix) = Adjoint(S)
 
