@@ -7,7 +7,9 @@ struct LinearEmbedding
 	basis::NamedMatrix
 end
 
-function _pca(X; npcs=50, algorithm=:arpack)
+include("irlba.jl")
+
+function _pca(X; npcs=50, algorithm=:arpack, kw...)
 	m,n = size(X)
 	npcs = min(min(m,n), npcs)
 
@@ -17,11 +19,13 @@ function _pca(X; npcs=50, algorithm=:arpack)
 	end
 
 	S = if algorithm == :arpack
-		S, nconv, niter, nmult, resid = svds(X; nsv=npcs)
+		S, nconv, niter, nmult, resid = svds(X; nsv=npcs, kw...)
 		S
+	elseif algorithm == :irlba
+		irlba(X, npcs; kw...)
 	else
 		Q = convert(Matrix, X)
-		svd(Q)
+		svd(Q; kw...)
 	end
 
 	Z = view(S.U, :, 1:npcs) * Diagonal(view(S.S, 1:npcs))
