@@ -34,6 +34,9 @@ function _pca(X; npcs=50, algorithm=:arpack, kw...)
 	Z, stdev, loadings
 end
 
+_pca(X::NamedMatrix; kw...) = _pca(X.array; kw...)
+_pca(X::NamedCenteredMatrix; kw...) = _pca(CenteredMatrix(X.A.array, X.mu.array); kw...)
+
 function pca(X::Union{NamedMatrix, NamedCenteredMatrix}; kw...)
 	Z, stdev, loadings = _pca(X; kw...)
 
@@ -44,8 +47,8 @@ function pca(X::Union{NamedMatrix, NamedCenteredMatrix}; kw...)
 	rowdim, coldim = dimnames(X)
 
 	coordinates = NamedArray(Z, (rownames, latentnames), (rowdim, :latent))
-	basis = NamedArray(loadings, (colnames, latentnames), (rowdim, :latent))
 	stdev = NamedArray(stdev, (latentnames,), (:latent,))
+	basis = NamedArray(loadings, (colnames, latentnames), (rowdim, :latent))
 	LinearEmbedding(coordinates, stdev, basis)
 end
 
