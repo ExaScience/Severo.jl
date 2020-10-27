@@ -9,6 +9,9 @@ SUITE["utils"] = utils
 include("benchmark_input.jl")
 SUITE["input"] = input
 
+include("benchmark_irlba.jl")
+SUITE["irlba"] = irlba
+
 if abspath(PROGRAM_FILE) == @__FILE__
 	tune!(SUITE)
 	results = run(SUITE, verbose=true, seconds=10)
