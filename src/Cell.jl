@@ -3,7 +3,7 @@ __precompile__()
 module Cell
 
 import SparseArrays: sparse, SparseMatrixCSC
-import NamedArrays: NamedArray
+import NamedArrays: NamedArray, names, dimnames
 
 CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
 NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
