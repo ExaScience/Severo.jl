@@ -235,7 +235,7 @@ Convert a count matrix and labels into its labeled representation
 Returns labeled sparse matrix containing the counts
 """
 function convert_counts(X::AbstractMatrix{<:Integer}, features::AbstractVector, barcodes::AbstractVector; unique_features::Bool=true)
-    if !isa(eltype(X), Integer)
+    if !(eltype(X) <: Integer)
         @warn "count matrices should be integers, trying to convert from $(eltype(X))"
         X = convert(AbstractMatrix{Int64}, X)
     end
