@@ -99,16 +99,29 @@ function show(io::IO, ::MIME"text/plain", C::CenteredMatrix)
     print(io, "  mu = $(C.mu)")
 end
 
-function mul!(C::StridedVecOrMat, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
+function mul!(C::StridedVector, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
     mul!(C, S.A, v, α, β)
     C .-= α * dot(S.mu, v)
     C
 end
 
-function mul!(C::StridedVecOrMat, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedVector, α::Number, β::Number)
+function mul!(C::StridedVector, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedVector, α::Number, β::Number)
     S = adjS.parent
     mul!(C, adjoint(S.A), v,  α, β)
     axpy!(-α * sum(v), S.mu, C)
+end
+
+function mul!(C::StridedMatrix, S::CenteredMatrix, v::StridedMatrix, α::Number, β::Number)
+    mul!(C, S.A, v, α, β)
+    C .-= α * S.mu' * v
+    C
+end
+
+function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedMatrix, α::Number, β::Number)
+    S = adjS.parent
+    mul!(C, adjoint(S.A), v,  α, β)
+    s = sum(v, dims=1)
+    mul!(C, S.mu, s, α, 1.0)
 end
 
 function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
