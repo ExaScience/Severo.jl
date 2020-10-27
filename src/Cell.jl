@@ -3,13 +3,13 @@ __precompile__()
 module Cell
 
 import SparseArrays: sparse, SparseMatrixCSC
-import NamedArrays: NamedArray, names, dimnames
+import NamedArrays: NamedArray, NamedMatrix, NamedVector, names, dimnames
 
 CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
 NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
 
-DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
-NamedDataMatrix{T} = NamedArray{T} where {T <: Integer}
+DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Real}
+NamedDataMatrix{T} = NamedArray{T} where {T <: Real}
 
 NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <: Real}
 

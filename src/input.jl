@@ -234,7 +234,7 @@ Convert a count matrix and labels into its labeled representation
 
 Returns labeled sparse matrix containing the counts
 """
-function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::AbstractVector; unique_features::Bool=true)
+function convert_counts(X::AbstractMatrix{<:Integer}, features::AbstractVector, barcodes::AbstractVector; unique_features::Bool=true)
     if !isa(eltype(X), Integer)
         @warn "count matrices should be integers, trying to convert from $(eltype(X))"
         X = convert(AbstractMatrix{Int64}, X)
@@ -260,7 +260,7 @@ Convert a count matrix into its labeled representation by generating unique labe
 
 Returns labeled sparse matrix containing the counts
 """
-function convert_counts(X::AbstractMatrix)
+function convert_counts(X::AbstractMatrix{<:Integer})
     genes = [string("gene-", i) for i in 1:size(X,1)]
     barcodes = [string("cell-", i) for i in 1:size(X,2)]
     NamedArray(copy(X'), (barcodes, genes), (:cells, :features))
