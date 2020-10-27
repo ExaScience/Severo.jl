@@ -14,7 +14,7 @@ C = Cell.CenteredMatrix(X', mu)
 
 X = randn(1000, 500)
 
-input["irlba_dense"] = @benchmarkable Cell.irlba($X, 50, tol=1e-5)
-input["irlba_sparse"] = @benchmarkable Cell.irlba($C, 10, tol=1e-5)
-input["arpack_dense"] = @benchmarkable svds($X; nsv=50, tol=1e-5)
-input["arpack_sparse"] = @benchmarkable svds($C; nsv=10, tol=1e-5)
+irlba["irlba_dense"] = @benchmarkable Cell.irlba($X, 50, tol=1e-5)
+irlba["irlba_sparse"] = @benchmarkable Cell.irlba($C, 10, tol=1e-5)
+irlba["arpack_dense"] = @benchmarkable svds($X; nsv=50, tol=1e-5)
+irlba["arpack_sparse"] = @benchmarkable svds($C; nsv=10, tol=1e-5)
