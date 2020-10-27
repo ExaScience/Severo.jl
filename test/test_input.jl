@@ -45,24 +45,3 @@ end
     Q = normalize(C; method="relativecounts", scale_factor=10.)
     @test all(sum(Q, dims=2) .≈ 10.0)
 end
-
-@testset "scaling" begin
-    X = sparse(Int64[
-        0  0  5  3  0  0  0  0  0  2
-        0  1  0  0  0  0  0  3  0  0
-        0  0  0  0  6  0  0  0  0  0
-        3  0  0  0  2  0  0  0  0  0
-        0  6  0  0  0  0  2  0  3  0
-    ])
-    C = convert_counts(X)
-
-    S, mu = scale(C)
-    @test names(S,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-6", "cell-7", "cell-8", "cell-9", "cell-10"]
-    @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
-    @test names(mu,1) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
-
-    X_mu, X_std = Cell.mean_std(X')
-    @test (X_mu ./ X_std) ≈ mu
-    @test Matrix((X' .- X_mu') ./ X_std') ≈ Matrix(S .- mu')
-end
-

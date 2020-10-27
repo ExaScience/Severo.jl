@@ -66,6 +66,54 @@ function scale_data(A::SparseMatrixCSC; scale_max=Inf)
     B, mu
 end
 
+struct CenteredMatrix{P, T <: AbstractMatrix, R <: AbstractVector} <: AbstractArray{P,2}
+    A::T
+    mu::R
+end
+
+function CenteredMatrix(A::AbstractMatrix, mu::AbstractVector)
+    m,n = size(A)
+    @assert n == length(mu)
+
+    T = typeof(A)
+    R = typeof(mu)
+    P = promote_type(eltype(A),eltype(mu))
+    CenteredMatrix{P, T, R}(A, mu)
+end
+
+import Base: eltype, size, adjoint, show, IO, convert
+import LinearAlgebra: mul!, dot, axpy!
+eltype(S::CenteredMatrix) = eltype(S.A)
+size(S::CenteredMatrix) = size(S.A)
+adjoint(S::CenteredMatrix) = Adjoint(S)
+
+function show(io::IO, C::CenteredMatrix)
+    print(io, "CenteredMatrix(A=$(C.A), mu=$(C.mu))")
+end
+
+function show(io::IO, ::MIME"text/plain", C::CenteredMatrix)
+    println(io, "CenteredMatrix:")
+    println(io, "  A = $(C.A)")
+    print(io, "  mu = $(C.mu)")
+end
+
+function mul!(C::StridedVecOrMat, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
+    mul!(C, S.A, v, α, β)
+    C .-= α * dot(S.mu, v)
+    C
+end
+
+function mul!(C::StridedVecOrMat, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedVector, α::Number, β::Number)
+    S = adjS.parent
+    mul!(C, adjoint(S.A), v,  α, β)
+    axpy!(-α * sum(v), S.mu, C)
+end
+
+function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
+    X = (C.A .- C.mu')
+    convert(T, X)
+end
+
 """
     scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf)
 
