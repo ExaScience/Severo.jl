@@ -57,6 +57,7 @@ end
 	y0 = [0.820, 0.430, 0.264, 0.789]
 	y = copy(y0)
 	@test mul!(y, C, r, 2.0, 1.0) ≈ (2*Q*r + y0)
+	@test @allocated(mul!(y, C, r, 2.0, 1.0)) == 0
 
 	@test C'*y ≈ Q'*y
 

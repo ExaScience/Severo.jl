@@ -81,6 +81,8 @@ function CenteredMatrix(A::AbstractMatrix, mu::AbstractVector)
     CenteredMatrix{P, T, R}(A, mu)
 end
 
+NamedCenteredMatrix{P,T,R} = CenteredMatrix{P,T,R} where {P, T <: NamedArray, R <: AbstractVector}
+
 import Base: eltype, size, adjoint, show, IO, convert
 import LinearAlgebra: mul!, dot, axpy!
 eltype(S::CenteredMatrix) = eltype(S.A)
@@ -113,6 +115,11 @@ function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
     X = (C.A .- C.mu')
     convert(T, X)
 end
+
+names(C::NamedCenteredMatrix) = names(C.A)
+names(C::NamedCenteredMatrix, d::Integer) = names(C.A, d)
+dimnames(C::NamedCenteredMatrix) = dimnames(C.A)
+dimnames(C::NamedCenteredMatrix, d::Integer) = dimnames(C.A, d)
 
 """
     scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf)
