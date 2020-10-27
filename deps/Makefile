@@ -34,7 +34,7 @@ OBJECTS=neighbours.o clustering.o ModularityOptimizer.o irlba.o
 	$(CC) -Wall -ansi -std=gnu99 -c $(CFLAGS) $(INCPATH) -o $@ $<
 
 all: $(OBJECTS)
-	$(LD) -shared $(OBJECTS) -o libcell.$(SLIB)
+	$(LD) -shared $(OBJECTS) $(LAPACK_FLAGS) -o libcell.$(SLIB)
 
 clean:
 	rm $(OBJECTS) libcell.$(SLIB)
