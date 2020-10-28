@@ -40,7 +40,7 @@ function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrando
     end
 
     assignment = if algorithm == :louvaincpp
-        modularity_cluster(SNN.array, algorithm=1, resolution=resolution, nrandomstarts=nstarts, niterations=niterations)
+        modularity_cluster(SNN.array, algorithm=1, resolution=resolution, nrandomstarts=nrandomstarts, niterations=niterations)
     elseif algorithm == :louvain
         n = Network(SNN.array)
         cl = louvain_multi(n, nrandomstarts, resolution=resolution, max_iterations=niterations)

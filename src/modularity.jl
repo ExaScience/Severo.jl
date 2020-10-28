@@ -188,6 +188,8 @@ function reduced_network(clustering::Clustering)
 	totw = total_weight(network)
 	tot_self = network.tot_self
 
+	ix, counts = counting_sort(clustering.nodecluster, clustering.nclusters)
+
 	reducedEdges = Vector{Float64}(undef, nnodes)
 	for i in 1:nnodes
 		fill!(reducedEdges, 0.0)
@@ -327,7 +329,7 @@ function merge!(clustering::Clustering, cluster_reduced::Clustering)
 end
 
 function louvain!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.0001)
-	numnodes(clustering) > 1 || return clustering
+	numnodes(clustering) > 1 || return 0.0
 
 	gain = local_move!(rng, clustering; min_modularity=min_modularity)
 	renumber!(clustering)
