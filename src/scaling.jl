@@ -46,6 +46,31 @@ end
 mean_std(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_std(copy(adjA))
 mean_var(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_var(copy(adjA))
 
+function log_VMR(x::Union{SparseColumnView,SparseVector})
+    n = length(x)
+
+    count = n - nnz(x)
+    mu = var = zero(eltype(x))
+
+    # nonzeros
+    for v in nonzeros(x)
+        count += 1
+        expm1_v = expm1(v)
+        delta = (expm1_v - mu)
+        mu += delta / count
+        var += delta * (expm1_v - mu)
+    end
+
+    log(var/mu)
+end
+
+"""
+variance to mean ratio (VMR) in non-logspace
+"""
+function log_VMR(A::SparseMatrixCSC)
+    [log_VMR(x) for x in eachcol(A)]
+end
+
 function scale_data(A::SparseMatrixCSC; scale_max=Inf)
     n, d = size(A)
     B = similar(A, Float64)
