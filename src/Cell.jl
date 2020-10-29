@@ -30,7 +30,8 @@ include("clustering.jl")
 
 export CountMatrix, NamedCountMatrix, DataMatrix, NamedDataMatrix
 export read_10X, read_10X_h5, convert_counts, filter_counts
-export normalize, scale, find_variable_features, embedding
+export normalize, scale, find_variable_features
+export embedding, pca, umap
 export nearest_neigbours, shared_nearest_neigbours
 export cluster
 end # module
