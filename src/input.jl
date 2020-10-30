@@ -241,6 +241,60 @@ function _read_h5ad(fname::AbstractString)
     end
 end
 
+function _read_csv(fname::AbstractString; unique_features::Bool=true)
+    X = readDelim(fname)
+    barcodes = names(X)[2:end]
+    features = X[:,1]
+
+    X = begin
+        nz = 0
+        for i in 2:size(X,2)
+            nz += count(!iszero, X[!,i])
+        end
+
+        Tv = eltype(X[!,2])
+        colptr = zeros(Int64, size(X, 2))
+        rowval = Vector{Int64}(undef, nz)
+        nzval = Vector{Tv}(undef, nz)
+        colptr[1] = 1
+        cnt = 1
+        @inbounds for j in 2:size(X, 2)
+            for i in 1:size(X, 1)
+                v = X[i, j]
+                if !iszero(v)
+                    rowval[cnt] = i
+                    nzval[cnt] = v
+                    cnt += 1
+                end
+            end
+            colptr[j] = cnt
+        end
+        SparseMatrixCSC(size(X, 1), size(X, 2) - 1, colptr, rowval, nzval)
+    end
+
+    copy(X'), features, barcodes
+end
+
+"""
+    read_csv(dirname::AbstractString; unique_features=true)
+
+Read count matrix from CSV
+
+**Arguments**:
+
+- `fname`: path to csv file
+- `unique_features`: should feature names be made unique (default: true)
+
+**Returns values**:
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_csv(dirname::AbstractString; unique_features::Bool=true)
+    X, features, barcodes = _read_csv(dirname)
+    convert_counts(X, features, barcodes, unique_features=unique_features)
+end
+
+
 """
     read_10X(dirname::AbstractString; unique_features=true)
 
