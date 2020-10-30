@@ -179,6 +179,27 @@ function _read_10X(dirname::AbstractString)
     X, features, barcodes
 end
 
+function _read_h5(fname::String, dataset::String="/counts")
+    h5open(fname, "r") do f
+        if ! exists(f, dataset)
+            throw(ArgumentError("Dataset $dataset does not exist in $fname"))
+        end
+
+        try
+            p = read(f, string(dataset, "/indptr"))
+            i = read(f, string(dataset, "/indices"))
+            x = read(f, string(dataset, "/data"))
+            dim = read(f, string(dataset, "/shape"))
+            features = read(f, string(dataset, "/rownames"))
+            barcodes = read(f, string(dataset, "/colnames"))
+            X = SparseMatrixCSC(dim[1], dim[2], p .+ 1, i .+ 1, x)
+            X, features, barcodes
+        catch e
+            rethrow(e)
+        end
+    end
+end
+
 """
     read_10X(dirname::AbstractString; unique_features=true)
 
@@ -215,6 +236,26 @@ Returns labeled sparse matrix containing the counts
 """
 function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features::Bool=true)
     X, features, barcodes = _read_10X_h5(fname, dataset)
+    convert_counts(X, features, barcodes, unique_features=unique_features)
+end
+
+"""
+    read_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+
+Read count matrix from hdf5 file.
+
+**Arguments**:
+
+- `fname`: path to hdf5 file
+- `dataset`: name of dataset to load (default: "counts")
+- `unique_features`: should feature names be made unique (default: true)
+
+**Returns values**:
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_h5(fname::String, dataset::String="/counts"; unique_features::Bool=true)
+    X, features, barcodes = _read_h5(fname, dataset)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
