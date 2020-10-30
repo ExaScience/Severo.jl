@@ -34,16 +34,17 @@ Cluster cells based on a neighbourhood graph.
 
 cluster assignment per cell
 """
-function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=1, niterations=10)
+function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false)
     if isa(algorithm, AbstractString)
         algorithm = Symbol(algorithm)
     end
 
     assignment = if algorithm == :louvaincpp
-        modularity_cluster(SNN.array, algorithm=1, resolution=resolution, nrandomstarts=nrandomstarts, niterations=niterations)
+        modularity_cluster(SNN.array, algorithm=1, resolution=resolution,
+                nrandomstarts=nrandomstarts, niterations=niterations, verbose=verbose)
     elseif algorithm == :louvain
         n = Network(SNN.array)
-        cl = louvain_multi(n, nrandomstarts, resolution=resolution, max_iterations=niterations)
+        cl = louvain_multi(n, nrandomstarts, resolution=resolution, max_iterations=niterations, verbose=verbose)
         cl.nodecluster
     else
         error("unknown clustering algorithm: $algorithm")
