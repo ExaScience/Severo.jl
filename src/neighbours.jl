@@ -59,6 +59,8 @@ function nearest_neigbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X
     NamedArray(nn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
 end
 
+nearest_neigbours(em::LinearEmbedding, k::Int64; kw...) = nearest_neigbours(em.coordinates, k; kw...)
+
 """
     shared_nearest_neigbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
 
@@ -83,3 +85,5 @@ function shared_nearest_neigbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2
     snn = jaccard_index(nn, k; prune=prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
 end
+
+shared_nearest_neigbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neigbours(em.coordinates, k; kw...)

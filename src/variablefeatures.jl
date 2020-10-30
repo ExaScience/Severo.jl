@@ -53,7 +53,7 @@ function select_features_saunders(counts::SparseMatrixCSC{<:Integer}, norm::Spar
     metric
 end
 
-function find_variable_features(counts::NamedCountMatrix; method=:vst, nfeatures=2000, kw...)
+function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
     end

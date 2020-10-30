@@ -45,7 +45,7 @@ Normalize count data with different methods:
 
 A labelled data matrix
 """
-function normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor=1.0)
+function normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor=1e4)
     if isa(method, AbstractString)
         method = Symbol(method)
     end
