@@ -159,7 +159,7 @@ function readDelim(fname::AbstractString; kw...)
     end
 end
 
-function _read_10X(dirname::AbstractString)
+function _read_10X(dirname::AbstractString, gene_column::Int64=2)
     if ! isdir(dirname)
         throw(ParseError_10X("Directory $dirname does not exist"))
     end
@@ -175,7 +175,7 @@ function _read_10X(dirname::AbstractString)
 
     X = readMM(matrix_file)
     barcodes = readlines(barcodes_file)
-    features = readDelim(feature_file, header=false)[:,2]
+    features = readDelim(feature_file, header=false)[:,gene_column]
     copy(X'), features, barcodes
 end
 
@@ -309,8 +309,8 @@ Read count matrix from 10X genomics
 
 Returns labeled sparse matrix containing the counts
 """
-function read_10X(dirname::AbstractString; unique_features::Bool=true)
-    X, features, barcodes = _read_10X(dirname)
+function read_10X(dirname::AbstractString; gene_column::Int64=2, unique_features::Bool=true)
+    X, features, barcodes = _read_10X(dirname, gene_column)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
