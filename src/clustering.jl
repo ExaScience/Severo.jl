@@ -14,7 +14,7 @@ function modularity_cluster(SNN::SparseMatrixCSC{Float64, Int64}; modularity=1, 
         modularity, resolution, algorithm, nrandomstarts, niterations,
         randomseed, verbose, assignment)
 
-    assignment .+= 1
+    Int64.(assignment .+ 1)
 end
 
 """

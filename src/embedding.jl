@@ -43,7 +43,7 @@ function pca(X::Union{NamedMatrix, NamedCenteredMatrix}, npcs::Int64; kw...)
     Z, stdev, loadings = _pca(X, npcs; kw...)
 
     k = length(stdev)
-    latentnames = map(x -> string("Latent-", x), 1:k)
+    latentnames = map(x -> string("PC-", x), 1:k)
 
     rownames, colnames = names(X)
     rowdim, coldim = dimnames(X)
@@ -65,7 +65,12 @@ function umap(X::LinearEmbedding, ncomponents::Int64=2; metric=:cosine, nneighbo
         metric
     end
 
-    UMAP.umap(X.coordinates', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs)'
+    coords = UMAP.umap(X.coordinates', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs)'
+
+    rownames = names(X.coordinates, 1)
+    rowdim = dimnames(X.coordinates, 1)
+    latentnames = map(x -> string("UMAP-", x), 1:ncomponents)
+    NamedArray(coords, (rownames, latentnames), (rowdim, :latent))
 end
 
 function embedding(X, ncomponents::Int64; method=:pca, kw...)
