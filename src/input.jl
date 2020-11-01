@@ -1,6 +1,7 @@
 import CSV
 import GZip
-import HDF5: h5open, attrs, exists, HDF5Attributes, filename
+import HDF5#: h5open, attrs, exists, HDF5Attributes, filename
+import SparseArrays: nonzeros, rowvals, getcolptr
 
 struct MMParseError <: Exception
     msg::AbstractString
@@ -230,28 +231,157 @@ function _read_h5ad(fname::AbstractString)
             throw(ArgumentError("Count data not found in $fname"))
         end
 
-        p = read(f, "X/indptr") .+ 1
-        i = read(f, "X/indices") .+ 1
-        x = read(f, "X/data")
-
         a = attrs(f["X"])
         dim = read_h5ad_attr(a, "shape", ["shape", "h5sparse_shape"])
         format = read_h5ad_attr(a, "format", ["encoding-type", "h5sparse_format"])
 
-        X = if format == "csr" || format == "csr_matrix"
-            X = SparseMatrixCSC(dim[2], dim[1], p, i, x)
-            copy(X')
+        try
+            p = read(f, "X/indptr") .+ 1
+            i = read(f, "X/indices") .+ 1
+            x = read(f, "X/data")
+
+            X = if format == "csr" || format == "csr_matrix"
+                X = SparseMatrixCSC(dim[2], dim[1], p, i, x)
+                copy(X')
+            else
+                SparseMatrixCSC(dim[1], dim[2], p, i, x)
+            end
+
+            obs = read(f, "obs")
+            barcodes = getindex.(obs, :index)
+
+            var = read(f, "var")
+            features = getindex.(var, :index)
+
+            X, features, barcodes
+        catch e
+            if isa(e, ErrorException) # probably HDF5 error
+                throw(ParseError_H5AD("Failed to load dataset $fname: $(e.msg)"))
+            else
+                rethrow(e)
+            end
+        end
+    end
+end
+
+_keys(::Type{NamedTuple{names, types}}) where {names, types<:Tuple} = names
+
+function _datatype(N::Type{<:NamedTuple})
+    strtype = HDF5.HDF5Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
+    HDF5.h5t_set_cset(strtype, HDF5.H5T_CSET_UTF8)
+    HDF5.h5t_set_size(strtype, HDF5.HDF5.H5T_VARIABLE)
+
+    names = _keys(N)
+    types = fieldtypes(N)
+
+    size = 0
+    for i in 1:nfields(types)
+        T = types[i]
+        data_type = if T == String
+            strtype
         else
-            SparseMatrixCSC(dim[1], dim[2], p, i, x)
+            HDF5.datatype(T)
+        end
+        size += sizeof(data_type)
+    end
+
+    dtype = HDF5.h5t_create(HDF5.H5T_COMPOUND, size)
+    offset = 0
+    for i in 1:nfields(types)
+        T = types[i]
+        data_type = if T == String
+            strtype
+        else
+            HDF5.datatype(T)
         end
 
-        obs = read(f, "obs")
-        barcodes = getindex.(obs, :index)
+        HDF5.h5t_insert(dtype, String(names[i]), offset, data_type)
+        offset += sizeof(data_type)
+    end
+    HDF5.HDF5Datatype(dtype)
+end
 
-        var = read(f, "var")
-        features = getindex.(var, :index)
+function jl_to_hdf5(data::AbstractArray{<:NamedTuple}, i)
+    N = eltype(data)
+    T = fieldtype(N, i)
 
-        X, features, barcodes
+    if T == String
+        ret = similar(data, Cstring)
+        @inbounds for j in eachindex(data)
+            ret[j] = Base.unsafe_convert(Cstring, data[j][i])
+        end
+        ret
+    else
+        ret = similar(data, T)
+        @inbounds for j in eachindex(data)
+            ret[j] = data[j][i]
+        end
+        ret
+    end
+end
+
+function HDF5.write(parent::Union{HDF5.HDF5File, HDF5.HDF5Group}, name::String, data::AbstractArray{N}, plists::HDF5.HDF5Properties...) where {N<:NamedTuple}
+    dtype = _datatype(N)
+    dspace = HDF5.dataspace(data)
+
+    strtype = HDF5.HDF5Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
+    HDF5.h5t_set_cset(strtype, HDF5.H5T_CSET_UTF8)
+    HDF5.h5t_set_size(strtype, HDF5.HDF5.H5T_VARIABLE)
+
+    try
+        obj = HDF5.d_create(parent, name, dtype, dspace, plists...)
+
+        try
+            types = fieldtypes(N)
+            names = _keys(N)
+            for i in 1:nfields(types)
+                T = types[i]
+                data_type = if T == String
+                    strtype
+                else
+                    HDF5.datatype(T)
+                end
+                tid = HDF5.h5t_create(HDF5.H5T_COMPOUND, sizeof(data_type))
+                HDF5.h5t_insert(tid, String(names[i]), 0, data_type)
+                HDF5.writearray(obj, tid, jl_to_hdf5(data, i))
+                close(tid)
+            end
+        finally
+            close(obj)
+        end
+    finally
+        close(dspace)
+        close(dtype)
+        close(strtype)
+    end
+end
+
+function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
+    h5open(fname, "cw") do f
+        try
+            x = X.array
+            write(f, "X/indptr", getcolptr(x) .- 1)
+            write(f, "X/indices", rowvals(x) .- 1)
+            write(f, "X/data", nonzeros(x))
+
+            a = attrs(f["X"])
+            a["encoding-type"] = "csc_matrix"
+            a["shape"] = collect(size(x))
+
+            nt = NamedTuple{(:index,),Tuple{String}}
+            obs = map(n -> nt((n,)), names(X,1))
+            write(f, "obs", obs)
+
+            var = map(n -> nt((n,)), names(X,2))
+            write(f, "var", var)
+        catch e
+            if isa(e, ErrorException) # probably HDF5 error
+                throw(ParseError_H5AD("Failed to write to h5ad $fname: $(e.msg)"))
+            else
+                rethrow(e)
+            end
+        end
+
     end
 end
 
