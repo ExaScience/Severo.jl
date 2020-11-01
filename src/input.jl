@@ -159,6 +159,20 @@ function readDelim(fname::AbstractString; kw...)
     end
 end
 
+function _readlines(fname::AbstractString)
+    io = if endswith(fname, ".gz")
+        GZip.open(fname, "r")
+    else
+        open(fname, "r")
+    end
+
+    try
+        readlines(io)
+    finally
+        close(io)
+    end
+end
+
 function _read_10X(dirname::AbstractString, gene_column::Int64=2)
     if ! isdir(dirname)
         throw(ParseError_10X("Directory $dirname does not exist"))
@@ -174,7 +188,7 @@ function _read_10X(dirname::AbstractString, gene_column::Int64=2)
     end
 
     X = readMM(matrix_file)
-    barcodes = readlines(barcodes_file)
+    barcodes = _readlines(barcodes_file)
     features = readDelim(feature_file, header=false)[:,gene_column]
     copy(X'), features, barcodes
 end
