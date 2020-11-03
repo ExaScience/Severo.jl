@@ -500,7 +500,7 @@ function read_h5(fname::AbstractString, dataset::AbstractString="/counts"; uniqu
 end
 
 """
-    read_h5ad(fname::String, dataset::String="/mm10"; unique_features=true)
+    read_h5ad(fname::AbstractString, dataset::String="/mm10"; unique_features=true)
 
 Read count matrix from hdf5 file as created by AnnData.py.
 https://anndata.readthedocs.io/en/latest/fileformat-prose.html
@@ -517,6 +517,42 @@ Returns labeled sparse matrix containing the counts
 function read_h5ad(fname::AbstractString; unique_features::Bool=true)
     X, features, barcodes = _read_h5ad(fname)
     convert_counts(X, features, barcodes, unique_features=unique_features)
+end
+
+"""
+    read_data(path::AbstractString; unique_features=true)
+
+Tries to identify and read a count matrix in any of the supported formats
+
+**Arguments**:
+
+- `fname`: path
+- `unique_features`: should feature names be made unique (default: true)
+
+**Returns values**:
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_data(path::AbstractString; unique_features::Bool=true)
+    if !ispath(path)
+        error("path $path does not point to anything")
+    end
+
+    f = if isdir(path)
+        read_10X
+    else
+        if endswith(path, ".h5ad")
+            read_h5ad
+        elseif endswith(path, ".h5")
+            read_10X_h5
+        elseif endswith(path, ".csv")
+            read_csv
+        else
+            error("unknown format $path")
+        end
+    end
+
+    f(path; unique_features=unique_features)
 end
 
 """
