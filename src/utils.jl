@@ -72,6 +72,46 @@ function counting_sort(v::AbstractVector{<:Integer}, M::Integer)
     ix,counts
 end
 
+function _cut!(labels::AbstractVector, v::AbstractVector, breaks::AbstractVector; right=true)
+    lower = first(breaks)
+    upper = last(breaks)
+
+    @inbounds for i in eachindex(v)
+        x = v[i]
+        labels[i] = if lower <= x <= upper
+            idx = searchsortedlast(breaks, x)
+            if right && x == breaks[idx]
+                idx -= 1
+            end
+            idx
+        else
+            0
+        end
+    end
+
+    labels
+end
+
+function cut!(labels::AbstractVector, v::AbstractVector, breaks::AbstractVector; right=true)
+    if issorted(breaks)
+        breaks = sort(breaks)
+    end
+
+    _cut!(labels, v, breaks)
+    labels
+end
+
+cut(v::AbstractVector, breaks::AbstractVector; right=true) = cut!(similar(v, Int64), v, breaks; right=right)
+function cut(v::AbstractVector, nbreaks::Int64; right=true)
+    min_v, max_v = extrema(v)
+    dx = max_v - min_v
+
+    breaks = collect(range(min_v, max_v, length=nbreaks+1))
+    breaks[1] -= dx/1000
+    breaks[end] += dx/1000
+    _cut!(similar(v, Int64), v, breaks; right=right)
+end
+
 function rep_each(x::AbstractVector{Tv}, each::AbstractVector{Ti}) where {Tv, Ti <: Integer}
     @assert length(x) == length(each)
     r = similar(x, sum(each))
