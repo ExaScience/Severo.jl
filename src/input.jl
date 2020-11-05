@@ -345,7 +345,7 @@ function HDF5.write(parent::Union{HDF5.HDF5File, HDF5.HDF5Group}, name::String, 
                 tid = HDF5.h5t_create(HDF5.H5T_COMPOUND, sizeof(data_type))
                 HDF5.h5t_insert(tid, String(names[i]), 0, data_type)
                 HDF5.writearray(obj, tid, jl_to_hdf5(data, i))
-                close(tid)
+                HDF5.h5t_close(tid)
             end
         finally
             close(obj)
