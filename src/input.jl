@@ -40,9 +40,9 @@ function parseMM_header(mm::IO)
 end
 
 function skipMM_comments(mm::IO)
-    ll = readline(mm)
+    ll = readline(mm, keep=false)
     while length(ll) == 0 || ll[1] == '%'
-        ll = readline(mm)
+        ll = readline(mm, keep=false)
     end
     ll
 end
@@ -50,10 +50,10 @@ end
 function parseMM_comments(mm::IO)
     comments = []
 
-    ll = readline(mm)
+    ll = readline(mm, keep=false)
     while length(ll) == 0 || ll[1] == '%'
         push!(comments, ll)
-        ll = readline(mm)
+        ll = readline(mm, keep=false)
     end
 
     ll, comments
@@ -82,7 +82,7 @@ function readMM(mm::IO; read_comments::Bool=false)
     v = Vector{eltype}(undef, entries)
 
     for i in 1:entries
-        ll = readline(mm)
+        ll = readline(mm, keep=false)
 
         x = split(ll)
         if length(x) != 3
@@ -107,6 +107,37 @@ function readMM(fname::AbstractString; kw...)
 
     try
         readMM(io; kw...)
+    finally
+        close(io)
+    end
+end
+
+function _read_dge(fname::AbstractString; kw...)
+    io = if endswith(fname, ".gz")
+        GZip.open(fname, "r")
+    else
+        open(fname, "r")
+    end
+
+    try
+        X, comments = readMM(io; read_comments=true, kw...)
+
+        genes = Vector{SubString}()
+        sizehint!(genes, size(X,1))
+        barcodes = Vector{SubString}()
+        sizehint!(barcodes, size(X,2))
+
+        for comment in comments
+            if startswith(comment, "%%GENES")
+                ss = split(comment, "\t")
+                append!(genes, ss[2:end])
+            elseif startswith(comment, "%%CELL_BARCODES")
+                ss = split(comment, "\t")
+                append!(barcodes, ss[2:end])
+            end
+        end
+
+        copy(X'), genes, barcodes
     finally
         close(io)
     end
@@ -439,6 +470,24 @@ function read_csv(dirname::AbstractString; unique_features::Bool=true)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
+"""
+    read_csv(dirname::AbstractString; unique_features=true)
+
+Read count matrix from digital gene expression (DGE) files
+
+**Arguments**:
+
+- `fname`: path to dge file
+- `unique_features`: should feature names be made unique (default: true)
+
+**Returns values**:
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_dge(dirname::AbstractString; unique_features::Bool=true)
+    X, features, barcodes = _read_dge(dirname)
+    convert_counts(X, features, barcodes, unique_features=unique_features)
+end
 
 """
     read_10X(dirname::AbstractString; unique_features=true)
@@ -547,6 +596,8 @@ function read_data(path::AbstractString; unique_features::Bool=true)
             read_10X_h5
         elseif endswith(path, ".csv")
             read_csv
+        elseif endswith(path, ".dge.txt.gz") || endswith(path, ".dge.txt")
+            read_dge
         else
             error("unknown format $path")
         end
