@@ -60,10 +60,22 @@ const datacollections = preprocess(
         "https://support.10xgenomics.com/single-cell-gene-expression/datasets/1.3.0/1M_neurons", [
             FileDataSet("full", "1M_neurons_full.h5", "https://cf.10xgenomics.com/samples/cell-exp/1.3.0/1M_neurons/1M_neurons_filtered_gene_bc_matrices_h5.h5")
             FileDataSet("sampled", "1M_neurons_sampled.h5", "https://cf.10xgenomics.com/samples/cell-exp/1.3.0/1M_neurons/1M_neurons_neuron20k.h5")
+        ]),
+    DataCollection("Saunders2018", "Molecular Diversity and Specializations among the Cells of the Adult Mouse Brain", "10.1016/j.cell.2018.07.028",
+        "http://dropviz.org/", [
+            FileDataSet("cerebellum", "cerebellum.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Cerebellum_ALT.raw.dge.txt.gz"),
+            FileDataSet("entopeduncular", "entopeduncular.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60EntoPeduncular.raw.dge.txt.gz"),
+            FileDataSet("frontal_cortex", "frontal_cortex.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Cortex_noRep5_FRONTALonly.raw.dge.txt.gz"),
+            FileDataSet("globus_pallidus", "globus_pallidus.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60GlobusPallidus.raw.dge.txt.gz"),
+            FileDataSet("hippocampus", "hippocampus.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Hippocampus.raw.dge.txt.gz"),
+            FileDataSet("posterior_cortex", "posterior_cortex.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Cortex_noRep5_POSTERIORonly.raw.dge.txt.gz"),
+            FileDataSet("stratium", "stratium.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Striatum.raw.dge.txt.gz"),
+            FileDataSet("substantia_nigra", "substantia_nigra.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60SubstantiaNigra.raw.dge.txt.gz"),
+            FileDataSet("thalamus", "thalamus.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Thalamus.raw.dge.txt.gz")
         ])
 )
 
-list_collections() = values(datacollections)
+list_collections() = collect(values(datacollections))
 
 function list_datasets(collection::AbstractString)
     col = get(datacollections, collection, nothing)
