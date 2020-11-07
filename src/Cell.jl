@@ -28,6 +28,7 @@ include("embedding.jl")
 include("neighbours.jl")
 include("clustering.jl")
 include("datasets.jl")
+include("diffexpr.jl")
 
 export CountMatrix, NamedCountMatrix, DataMatrix, NamedDataMatrix
 export read_10X, read_10X_h5, read_h5, read_h5ad, write_h5ad, read_csv, read_data
