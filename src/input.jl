@@ -649,8 +649,8 @@ Convert a count matrix into its labeled representation by generating unique labe
 Returns labeled sparse matrix containing the counts
 """
 function convert_counts(X::AbstractMatrix)
-    genes = [string("gene-", i) for i in 1:size(X,1)]
-    barcodes = [string("cell-", i) for i in 1:size(X,2)]
+    barcodes = [string("cell-", i) for i in 1:size(X,1)]
+    genes = [string("gene-", i) for i in 1:size(X,2)]
     convert_counts(X, genes, barcodes; unique_features=false)
 end
 

@@ -4,11 +4,16 @@ import LinearAlgebra: mul!
 
 @testset "scaling" begin
     X = sparse(Int64[
-        0  0  5  3  0  0  0  0  0  2
-        0  1  0  0  0  0  0  3  0  0
-        0  0  0  0  6  0  0  0  0  0
-        3  0  0  0  2  0  0  0  0  0
-        0  6  0  0  0  0  2  0  3  0
+        0  0  0  3  0
+        0  1  0  0  6
+        5  0  0  0  0
+        3  0  0  0  0
+        0  0  6  2  0
+        0  0  0  0  0
+        0  0  0  0  2
+        0  3  0  0  0
+        0  0  0  0  3
+        2  0  0  0  0
     ])
     C = convert_counts(X)
 
@@ -17,9 +22,9 @@ import LinearAlgebra: mul!
     @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
     @test names(mu,1) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
 
-    X_mu, X_std = Cell.mean_std(X')
+    X_mu, X_std = Cell.mean_std(X)
     @test (X_mu ./ X_std) ≈ mu
-    @test Matrix((X' .- X_mu') ./ X_std') ≈ Matrix(S .- mu')
+    @test Matrix((X .- X_mu') ./ X_std') ≈ Matrix(S .- mu')
 end
 
 @testset "centered matrix" begin

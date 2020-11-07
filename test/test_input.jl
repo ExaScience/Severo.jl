@@ -3,17 +3,22 @@ import SparseArrays: sprand, sparse
 import Distributions: Poisson, rand
 
 @testset "input" begin
-    X = sprand(10, 100, .1, (i) -> rand(Poisson(4), i))
+    X = sprand(100, 10, .1, (i) -> rand(Poisson(4), i))
     C = convert_counts(X)
     @test size(C) == (100,10)
     @test isa(C, NamedCountMatrix)
 
     X = sparse(Int64[
-        0  0  5  3  0  0  0  0  0  2
-        0  1  0  0  0  0  0  3  0  0
-        0  0  0  0  6  0  0  0  0  0
-        3  0  0  0  2  0  0  0  0  0
-        0  6  0  0  0  0  2  0  3  0
+        0  0  0  3  0
+        0  1  0  0  6
+        5  0  0  0  0
+        3  0  0  0  0
+        0  0  6  2  0
+        0  0  0  0  0
+        0  0  0  0  2
+        0  3  0  0  0
+        0  0  0  0  3
+        2  0  0  0  0
     ])
     C = convert_counts(X)
     C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
@@ -25,11 +30,16 @@ end
 
 @testset "normalize" begin
     X = sparse(Int64[
-        0  0  5  3  0  0  0  0  0  2
-        0  1  0  0  0  0  0  3  0  0
-        0  0  0  0  6  0  0  0  0  0
-        3  0  0  0  2  0  0  0  0  0
-        0  6  0  0  0  0  2  0  3  0
+        0  0  0  3  0
+        0  1  0  0  6
+        5  0  0  0  0
+        3  0  0  0  0
+        0  0  6  2  0
+        0  0  0  0  0
+        0  0  0  0  2
+        0  3  0  0  0
+        0  0  0  0  3
+        2  0  0  0  0
     ])
     C = convert_counts(X)
     C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
