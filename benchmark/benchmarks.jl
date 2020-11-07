@@ -15,5 +15,13 @@ SUITE["irlba"] = irlba
 if abspath(PROGRAM_FILE) == @__FILE__
 	tune!(SUITE)
 	results = run(SUITE, verbose=true, seconds=10)
+
+	if isfile("benchmarks.json")
+		prev = BenchmarkTools.load("benchmarks.json")[1]
+		include("utils.jl")
+		c = compare(prev, results, n=1000)
+		show(judge(c))
+	end
+
 	BenchmarkTools.save("benchmarks.json", results)
 end
