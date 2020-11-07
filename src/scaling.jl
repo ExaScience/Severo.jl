@@ -120,8 +120,9 @@ end
 
 function show(io::IO, ::MIME"text/plain", C::CenteredMatrix)
     println(io, "CenteredMatrix:")
-    println(io, "  A = $(C.A)")
-    print(io, "  mu = $(C.mu)")
+    ioc = IOContext(io, :compact=>true, :limit=>true)
+    println(ioc, "  A = ", C.A)
+    print(ioc, "  mu = ", C.mu)
 end
 
 function mul!(C::StridedVector, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
