@@ -36,11 +36,23 @@ end
 
 make_unique(names::AbstractVector{T}, sep::AbstractString=".") where {T <: AbstractString} = make_unique!(similar(names), names, sep)
 
-function counting_sort(v::AbstractVector, M::Integer)
+function count_labels(v::AbstractVector{<:Integer})
+    min, max = extrema(v)
+    @assert min >= 1
+    max
+end
+
+function count_map(v::AbstractVector{<:Integer}, M::Integer)
     counts = zeros(Int64, M)
     @inbounds for x in v
         counts[x] += 1
     end
+
+    counts
+end
+
+function counting_sort(v::AbstractVector{<:Integer}, M::Integer)
+    counts = count_map(v, M)
 
     ax = axes(v, 1)
     ix = similar(Vector{eltype(ax)}, ax)
@@ -74,4 +86,26 @@ function rep_each(x::AbstractVector{Tv}, each::AbstractVector{Ti}) where {Tv, Ti
     end
 
     r
+end
+
+function tiedrank(x::AbstractVector)
+	n = length(x)
+	J = sortperm(x)
+
+	rk = zeros(size(J))
+	i = 1
+	while i <= n
+		j = i
+		@inbounds while (j < n) && x[J[j]] == x[J[j+1]]
+			j += 1
+		end
+
+		@inbounds for k in i:j
+			rk[J[k]] = (i + j) / 2.
+		end
+
+		i = j + 1
+	end
+
+	rk
 end
