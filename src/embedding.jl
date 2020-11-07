@@ -36,8 +36,8 @@ function _pca(X, npcs::Int64; algorithm=:irlba, kw...)
     Z, stdev, loadings
 end
 
-_pca(X::NamedMatrix; kw...) = _pca(X.array; kw...)
-_pca(X::NamedCenteredMatrix; kw...) = _pca(CenteredMatrix(X.A.array, X.mu.array); kw...)
+_pca(X::NamedMatrix, npcs::Int64; kw...) = _pca(X.array, npcs; kw...)
+_pca(X::NamedCenteredMatrix, npcs::Int64; kw...) = _pca(CenteredMatrix(X.A.array, X.mu.array), npcs; kw...)
 
 function pca(X::Union{NamedMatrix, NamedCenteredMatrix}, npcs::Int64; kw...)
     Z, stdev, loadings = _pca(X, npcs; kw...)

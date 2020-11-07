@@ -78,7 +78,7 @@ function scale_data(A::SparseMatrixCSC; scale_max=10)
     # ((x - mu) / std > scale_max)
     mu = zeros(d)
     @inbounds for i in 1:size(A,2)
-        mu[i], std = mean_std(A[:,i])
+        mu[i], std = mean_std(view(A, :, i))
         mu[i] /= std
 
         scale_max_i = scale_max + mu[i]

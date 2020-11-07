@@ -1,29 +1,21 @@
 import SparseArrays: SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 
-function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Integer}
+function row_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Integer}
     B = similar(A, Float64)
 
     s = sum(A, dims=2)
-    for (a, b) in zip(eachcol(A), eachcol(B))
-        @inbounds for (i, idx) in enumerate(nonzeroinds(a))
-            nonzeros(b)[i] = log1p(scale_factor * nonzeros(a)[i] / s[idx])
+    @inbounds for i in 1:size(A,2)
+        @inbounds for j in nzrange(A, i)
+            nonzeros(B)[j] = scale_factor * nonzeros(A)[j] / s[rowvals(A)[j]]
         end
-#    nonzeros(b) .= log1p.(scale_factor * nonzeros(a) ./ s[nonzeroinds(a)])
     end
 
     B
 end
 
-function row_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Integer}
-    B = similar(A, Float64)
-
-    s = sum(A, dims=2)
-    for (a, b) in zip(eachcol(A), eachcol(B))
-        @inbounds for (i, idx) in enumerate(nonzeroinds(a))
-            nonzeros(b)[i] = scale_factor * nonzeros(a)[i] / s[idx]
-        end
-    end
-
+function log_norm(A::SparseMatrixCSC{T}; scale_factor=1.0) where {T <: Integer}
+    B = row_norm(A, scale_factor=scale_factor)
+    nonzeros(B) .= log1p.(nonzeros(B))
     B
 end
 
