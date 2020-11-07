@@ -56,7 +56,9 @@ end
 
 UMAP.knn_search(X::AbstractMatrix, k, ::Val{:ann}) = ann(X, k)
 
-function umap(X::LinearEmbedding, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Integer=300, kw...)
+umap(X::LinearEmbedding, ncomponents::Int64=2; kw...) = umap(X.coordinates, ncomponents; kw...)
+
+function umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Integer=300, kw...)
     metric = if metric == :cosine
         UMAP.CosineDist()
     elseif metric == :euclidian
@@ -65,10 +67,14 @@ function umap(X::LinearEmbedding, ncomponents::Int64=2; metric=:cosine, nneighbo
         metric
     end
 
-    coords = UMAP.umap(X.coordinates', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs)'
+    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs)'
+end
 
-    rownames = names(X.coordinates, 1)
-    rowdim = dimnames(X.coordinates, 1)
+function umap(X::NamedMatrix, ncomponents::Int64=2; kw...)
+    coords = umap(X.array, ncomponents; kw...)
+
+    rownames = names(X, 1)
+    rowdim = dimnames(X, 1)
     latentnames = map(x -> string("UMAP-", x), 1:ncomponents)
     NamedArray(coords, (rownames, latentnames), (rowdim, :latent))
 end
