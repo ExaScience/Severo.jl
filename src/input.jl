@@ -207,17 +207,11 @@ function _readlines(fname::AbstractString)
 end
 
 function _read_10X(dirname::AbstractString, gene_column::Int64=2)
-    if ! isdir(dirname)
-        throw(ParseError_10X("Directory $dirname does not exist"))
-    end
+end
 
-    is_v3 = isfile(joinpath(dirname, "features.tsv.gz"))
-    feature_file = joinpath(dirname, is_v3 ? "features.tsv.gz" : "genes.tsv")
-    barcodes_file = joinpath(dirname, is_v3 ? "barcodes.tsv.gz" : "barcodes.tsv")
-    matrix_file = joinpath(dirname, is_v3 ? "matrix.mtx.gz" : "matrix.mtx")
-
+function _read_10X(matrix_file::AbstractString, barcodes_file::AbstractString, feature_file::AbstractString, gene_column::Int64=2)
     if !(isfile(feature_file) && isfile(barcodes_file) && isfile(matrix_file))
-        throw(ParseError_10X("Directory $dirname does not contain all components: $feature_file, $barcodes_file, $matrix_file"))
+        throw(ParseError_10X("Couldn't locate all components: $feature_file, $barcodes_file, $matrix_file"))
     end
 
     X = readMM(matrix_file)
@@ -504,7 +498,16 @@ Read count matrix from 10X genomics
 Returns labeled sparse matrix containing the counts
 """
 function read_10X(dirname::AbstractString; gene_column::Int64=2, unique_features::Bool=true)
-    X, features, barcodes = _read_10X(dirname, gene_column)
+    if ! isdir(dirname)
+        throw(ParseError_10X("Directory $dirname does not exist"))
+    end
+
+    is_v3 = isfile(joinpath(dirname, "features.tsv.gz"))
+    feature_file = joinpath(dirname, is_v3 ? "features.tsv.gz" : "genes.tsv")
+    barcodes_file = joinpath(dirname, is_v3 ? "barcodes.tsv.gz" : "barcodes.tsv")
+    matrix_file = joinpath(dirname, is_v3 ? "matrix.mtx.gz" : "matrix.mtx")
+
+    X, features, barcodes = _read_10X(matrix_file, barcodes_file, feature_file, gene_column)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
@@ -525,6 +528,18 @@ Returns labeled sparse matrix containing the counts
 """
 function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features::Bool=true)
     X, features, barcodes = _read_10X_h5(fname, dataset)
+    convert_counts(X, features, barcodes, unique_features=unique_features)
+end
+
+function read_geo(prefix::AbstractString; gene_column::Int64=2, unique_features::Bool=true)
+    is_gz = isfile(string(prefix, "matrix.mtx.gz"))
+    postfix = is_gz ? ".gz" : ""
+
+    feature_file = string(prefix, "genes.tsv", postfix)
+    barcodes_file = string(prefix, "barcodes.tsv", postfix)
+    matrix_file = string(prefix, "matrix.mtx", postfix)
+
+    X, features, barcodes = _read_10X(matrix_file, barcodes_file, feature_file, gene_column)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
