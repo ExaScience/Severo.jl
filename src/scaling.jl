@@ -71,7 +71,7 @@ function log_VMR(A::SparseMatrixCSC)
     [log_VMR(x) for x in eachcol(A)]
 end
 
-function scale_data(A::SparseMatrixCSC; scale_max=10)
+function scale_data(A::SparseMatrixCSC; scale_max::Float64=10)
     n, d = size(A)
     B = similar(A, Float64)
 
