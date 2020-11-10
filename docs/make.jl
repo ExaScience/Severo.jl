@@ -1,0 +1,22 @@
+using Documenter, Cell
+
+makedocs(
+    modules = [Cell],
+    doctest = false,
+    source = "src",
+    build   = "build",
+    clean = true,
+    sitename = "Cell.jl",
+    authors = "Tom Haber and contributors",
+    pages = [
+        "Home" => "index.md",
+        "Showcases" => [
+            "pbmc.md",
+        ],
+        "Library" => [
+            "Public" => "public.md",
+            "Internals" => "internals.md",
+        ],
+        "contributing.md",
+    ]
+)
