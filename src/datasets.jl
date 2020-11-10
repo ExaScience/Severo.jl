@@ -72,6 +72,12 @@ const datacollections = preprocess(
             FileDataSet("stratium", "stratium.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Striatum.raw.dge.txt.gz"),
             FileDataSet("substantia_nigra", "substantia_nigra.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60SubstantiaNigra.raw.dge.txt.gz"),
             FileDataSet("thalamus", "thalamus.raw.dge.txt.gz", "https://storage.googleapis.com/dropviz-downloads/static/regions/F_GRCm38.81.P60Thalamus.raw.dge.txt.gz")
+        ]),
+    DataCollection("PBMC", "Peripheral blood mononuclear cells (PBMCs) from a healthy donor", "",
+        "https://support.10xgenomics.com/single-cell-gene-expression/datasets", [
+            TarDataSet("33k PBMCs from a Healthy Donor", "33k", "https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc33k/pbmc33k_filtered_gene_bc_matrices.tar.gz"),
+            TarDataSet("3k PBMCs from a Healthy Donor", "3k", "https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz"),
+            TarDataSet("6k PBMCs from a Healthy Donor", "6k", "https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc6k/pbmc6k_filtered_gene_bc_matrices.tar.gz")
         ])
 )
 
