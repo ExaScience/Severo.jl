@@ -1,6 +1,6 @@
 import SparseArrays: SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 
-function row_norm(A::SparseMatrixCSC{T}; scale_factor::Float64=1.0) where {T <: Integer}
+function row_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: Integer}
     B = similar(A, Float64)
 
     s = sum(A, dims=2)
@@ -13,8 +13,8 @@ function row_norm(A::SparseMatrixCSC{T}; scale_factor::Float64=1.0) where {T <: 
     B
 end
 
-function log_norm(A::SparseMatrixCSC{T}; scale_factor::Float64=1.0) where {T <: Integer}
-    B = row_norm(A, scale_factor=scale_factor)
+function log_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: Integer}
+    B = row_norm(A, scale_factor)
     nonzeros(B) .= log1p.(nonzeros(B))
     B
 end
@@ -37,19 +37,20 @@ Normalize count data with different methods:
 
 A labelled data matrix
 """
-function normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor::Float64=1.)
+function normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1.)
     if isa(method, AbstractString)
         method = Symbol(method)
     end
 
-    if method == :lognormalize
-        f = log_norm
+    f = if method == :lognormalize
+        log_norm
     elseif method == :relativecounts
-        f = row_norm
+        row_norm
     else
         error("unknown normalization method: $method")
     end
 
-    S = f(X.array; scale_factor=scale_factor)
+    scale_factor = convert(Float64, scale_factor)
+    S = f(X.array, scale_factor)
     NamedArray(S, X.dicts, X.dimnames)
 end
