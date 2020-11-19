@@ -23,6 +23,7 @@ end
 
 include("utils.jl")
 include("input.jl")
+include("filtering.jl")
 include("normalize.jl")
 include("scaling.jl")
 include("variablefeatures.jl")
