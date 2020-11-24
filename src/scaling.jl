@@ -18,6 +18,42 @@ function mean_std(x::Union{SparseColumnView,SparseVector})
     mu, std
 end
 
+function mean_std(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+    mu = zeros(nlabels)
+    std = zeros(nlabels)
+    n = zeros(Int64, nlabels)
+    nz = zeros(Int64, nlabels)
+
+    prev = 1
+    @inbounds for i in 1:nnz(x)
+        idx = nonzeroinds(x)[i]
+        v = nonzeros(x)[i]
+
+        while prev < idx
+            k = lbls[prev]
+            nz[k] += 1
+            prev += 1
+        end
+
+        k = lbls[idx]
+        n[k] += 1
+        delta = (v - mu[k])
+        mu[k] += delta / n[k]
+        std[k] += delta * (v - mu[k])
+        prev = idx + 1
+    end
+
+    @inbounds for k in 1:nlabels
+        delta = mu[k]
+        mu[k] *= n[k] / (nz[k] + n[k])
+        std[k] += nz[k] * (mu[k]*delta)
+        n[k] += nz[k]
+    end
+
+    std .= sqrt.(std ./ (n .- 1))
+    mu, std, n
+end
+
 function mean_std(A::SparseMatrixCSC)
     n, d = size(A)
     mu = zeros(d)
