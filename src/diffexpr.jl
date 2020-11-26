@@ -4,9 +4,15 @@ import Distributions: TDist
 
 include("ranksum.jl")
 
-#function wilcoxon_test(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
-function wilcoxon_test(x::SparseVec, lbls::AbstractVector{Bool})
-    ranksumtest(x, lbls)
+function wilcoxon_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
+        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+    sel = BitArray(undef, length(lbls))
+    @inbounds for k in 1:nlabels
+        sel .= lbls .== k
+        scores[k], pvals[k] = ranksumtest(x, sel)
+    end
+
+    scores, pvals
 end
 
 function unequal_var_ttest(m1, v1, n1, m2, v2, n2)
@@ -25,15 +31,14 @@ function unequal_var_ttest(m1, v1, n1, m2, v2, n2)
     t, prob
 end
 
-function t_test(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+function t_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
+        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
     mu, var, n = mean_var(x, lbls, nlabels)
     mu2 = (sum(n .* mu) .- (n .* mu)) ./ (length(x) .- n)
 
     var2 = var .* (n.-1) .+ mu.^2 .*n
     var2 .= (sum(var2) .- var2 .- mu2.^2 .* (length(x) .- n)) ./ (length(x) .- n .- 1)
 
-    scores = Vector{Float64}(undef, nlabels)
-    pvals = Vector{Float64}(undef, nlabels)
     @inbounds for k in 1:nlabels
         n2 = length(x) - n[k]
         scores[k], pvals[k] = unequal_var_ttest(mu[k], var[k], n[k], mu2[k], var2[k], n2)
@@ -176,10 +181,10 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
         method = Symbol(method)
     end
 
-    f = if method == :wilcoxon
-        wilcoxon_test
+    f! = if method == :wilcoxon
+        wilcoxon_test!
     elseif method == :t
-        t_test
+        t_test!
     else
         error("unknown differential expression method: $method")
     end
@@ -206,16 +211,14 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
 
     scores = Matrix{Float64}(undef, nfeatures, nlabels)
     pvals = Matrix{Float64}(undef, nfeatures, nlabels)
-    logfcs = Matrix{Float64}(undef, nfeatures, nlabels)
+    logfc = Matrix{Float64}(undef, nfeatures, nlabels)
 
-    for (i,x) in enumerate(eachcol(X.array))
+    @inbounds for (i,x) in enumerate(eachcol(X.array))
         mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
 
-        score, pval = f(x, lbls, nlabels; kw...)
-        scores[i, :] = score
-        pvals[i, :] = pval
-        logfcs[i, :] = mu1 .- mu2
+        f!(view(scores, i,:), view(pvals, i,:), x, lbls, nlabels; kw...)
+        logfc[i, :] = mu1 .- mu2
     end
 
-    scores, pvals, logfcs
+    scores, pvals, logfc
 end
