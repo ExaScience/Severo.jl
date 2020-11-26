@@ -2,16 +2,18 @@ __precompile__()
 
 module Cell
 
-import SparseArrays: sparse, SparseMatrixCSC
+import SparseArrays: sparse, SparseMatrixCSC, SparseVector, SparseColumnView
 import NamedArrays: NamedArray, NamedMatrix, NamedVector, names, dimnames
 
-CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
-NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
+const CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
+const NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
 
-DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Real}
-NamedDataMatrix{T} = NamedArray{T} where {T <: Real}
+const DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Real}
+const NamedDataMatrix{T} = NamedArray{T} where {T <: Real}
 
-NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <: Real}
+const NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <: Real}
+
+const SparseVec = Union{SparseColumnView, SparseVector}
 
 try
     include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
