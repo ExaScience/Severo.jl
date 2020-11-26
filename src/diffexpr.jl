@@ -1,11 +1,11 @@
-import DataFrames: DataFrame
-import SparseArrays: SparseColumnView, SparseVector, nonzeros, nonzeroinds
+import DataFrames: DataFrame, sort
+import SparseArrays: nonzeros, nonzeroinds
 import Distributions: TDist
 
 include("ranksum.jl")
 
 function wilcoxon_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
-        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
     sel = BitArray(undef, length(lbls))
     @inbounds for k in 1:nlabels
         sel .= lbls .== k
@@ -32,7 +32,7 @@ function unequal_var_ttest(m1, v1, n1, m2, v2, n2)
 end
 
 function t_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
-        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
     mu, var, n = mean_var(x, lbls, nlabels)
     mu2 = (sum(n .* mu) .- (n .* mu)) ./ (length(x) .- n)
 
@@ -220,6 +220,7 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
         logfc[i, :] = mu1 .- mu2
     end
 
-    DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
-              group=repeat(1:4, inner=nfeatures), marker=repeat(names(X,2), outer=4))
+    de = DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
+              group=repeat(1:nlabels, inner=nfeatures), marker=repeat(names(X,2), outer=nlabels))
+    sort(de, [:group, :pval, :logfc])
 end

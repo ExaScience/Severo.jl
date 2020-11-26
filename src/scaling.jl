@@ -18,7 +18,7 @@ function mean_std(x::Union{SparseColumnView,SparseVector})
     mu, std
 end
 
-function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
     @assert length(x) == length(lbls)
 
     mu = zeros(nlabels)

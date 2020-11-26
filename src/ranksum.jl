@@ -131,7 +131,7 @@ function ranksumtest(x::AbstractArray, labels::BitVector)
     z = (U - 0.5*sign(U - mu) - mu) / sigma
     twosided = 2 * ccdf(Normal(), abs(z))
 
-    U, twosided
+    z, twosided
 end
 
 function ranksumtest(x::AbstractArray, labels::Vector{<:Integer}, nlabels=length(unique(labels)))
@@ -153,5 +153,5 @@ function ranksumtest(x::AbstractArray, labels::Vector{<:Integer}, nlabels=length
     z = (U .- 0.5*sign.(U .- mu) .- mu) ./ sigma
     twosided = 2 * ccdf.(Normal(), abs.(z))
 
-    U, twosided
+    z, twosided
 end
