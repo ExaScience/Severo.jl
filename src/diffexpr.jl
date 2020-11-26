@@ -1,11 +1,45 @@
 import DataFrames: DataFrame
 import SparseArrays: SparseColumnView, SparseVector, nonzeros, nonzeroinds
+import Distributions: TDist
 
 include("ranksum.jl")
 
-#function wilcoxon_test(x::Union{SparseColumnView, SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
-function wilcoxon_test(x::Union{SparseColumnView, SparseVector}, lbls::AbstractVector{Bool})
+#function wilcoxon_test(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+function wilcoxon_test(x::SparseVec, lbls::AbstractVector{Bool})
     ranksumtest(x, lbls)
+end
+
+function unequal_var_ttest(m1, v1, n1, m2, v2, n2)
+    d = m1 - m2
+    vn1 = v1 / n1
+    vn2 = v2 / n2
+
+    df = (vn1 + vn2)^2 / (vn1^2 / (n1 - 1) + vn2^2 / (n2 - 1))
+    if isnan(df)
+        df = 1.
+    end
+
+    t = d / sqrt(vn1 + vn2)
+    prob = 2.0 * ccdf(TDist(df), abs(t))
+
+    t, prob
+end
+
+function t_test(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+    mu, var, n = mean_var(x, lbls, nlabels)
+    mu2 = (sum(n .* mu) .- (n .* mu)) ./ (length(x) .- n)
+
+    var2 = var .* (n.-1) .+ mu.^2 .*n
+    var2 .= (sum(var2) .- var2 .- mu2.^2 .* (length(x) .- n)) ./ (length(x) .- n .- 1)
+
+    scores = Vector{Float64}(undef, nlabels)
+    pvals = Vector{Float64}(undef, nlabels)
+    @inbounds for k in 1:nlabels
+        n2 = length(x) - n[k]
+        scores[k], pvals[k] = unequal_var_ttest(mu[k], var[k], n[k], mu2[k], var2[k], n2)
+    end
+
+    scores, pvals
 end
 
 function counts(ix::AbstractVector{<:Integer}, v::AbstractVector{T}, lbls::AbstractVector{<:Integer},
@@ -45,12 +79,12 @@ function log_means(ix::AbstractVector{<:Integer}, v::AbstractVector, lbls::Abstr
     mu1, mu2
 end
 
-function log_means(x::SparseColumnView, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls),
+function log_means(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls),
         nc::AbstractVector{<:Integer}=count_map(lbls, nlabels))
     log_means(nonzeroinds(x), nonzeros(x), lbls, nlabels, nc)
 end
 
-function log_means_exp(x::SparseColumnView, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls),
+function log_means_exp(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls),
         nc::AbstractVector{<:Integer}=count_map(lbls, nlabels))
     log_means(nonzeroinds(x), expm1.(nonzeros(x)), lbls, nlabels, nc)
 end
@@ -144,6 +178,8 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
 
     f = if method == :wilcoxon
         wilcoxon_test
+    elseif method == :t
+        t_test
     else
         error("unknown differential expression method: $method")
     end
@@ -168,15 +204,18 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
     nlabels = count_labels(lbls)
     nc = count_map(lbls, nlabels)
 
-    de = DataFrame()
-    for x in eachcol(X.array)
-        mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
-        avg_diff = mu1 .- mu2
+    scores = Matrix{Float64}(undef, nfeatures, nlabels)
+    pvals = Matrix{Float64}(undef, nfeatures, nlabels)
+    logfcs = Matrix{Float64}(undef, nfeatures, nlabels)
 
-        for i in 1:nlabels
-            pvals = f(x, lbls .== i; kw...)
-            df = DataFrame(avg_diff=avg_diff, pvals=pvals)
-            de = vcat(de, df)
-        end
+    for (i,x) in enumerate(eachcol(X.array))
+        mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
+
+        score, pval = f(x, lbls, nlabels; kw...)
+        scores[i, :] = score
+        pvals[i, :] = pval
+        logfcs[i, :] = mu1 .- mu2
     end
+
+    scores, pvals, logfcs
 end
