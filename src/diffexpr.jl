@@ -220,5 +220,6 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
         logfc[i, :] = mu1 .- mu2
     end
 
-    scores, pvals, logfc
+    DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
+              group=repeat(1:4, inner=nfeatures), marker=repeat(names(X,2), outer=4))
 end
