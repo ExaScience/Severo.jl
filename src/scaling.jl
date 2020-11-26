@@ -18,9 +18,11 @@ function mean_std(x::Union{SparseColumnView,SparseVector})
     mu, std
 end
 
-function mean_std(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Int64=count_labels(lbls))
+    @assert length(x) == length(lbls)
+
     mu = zeros(nlabels)
-    std = zeros(nlabels)
+    var = zeros(nlabels)
     n = zeros(Int64, nlabels)
     nz = zeros(Int64, nlabels)
 
@@ -39,19 +41,25 @@ function mean_std(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{
         n[k] += 1
         delta = (v - mu[k])
         mu[k] += delta / n[k]
-        std[k] += delta * (v - mu[k])
+        var[k] += delta * (v - mu[k])
         prev = idx + 1
+    end
+
+    @inbounds while prev <= length(x)
+        k = lbls[prev]
+        nz[k] += 1
+        prev += 1
     end
 
     @inbounds for k in 1:nlabels
         delta = mu[k]
         mu[k] *= n[k] / (nz[k] + n[k])
-        std[k] += nz[k] * (mu[k]*delta)
+        var[k] += nz[k] * (mu[k]*delta)
         n[k] += nz[k]
     end
 
-    std .= sqrt.(std ./ (n .- 1))
-    mu, std, n
+    var .= (var ./ (n .- 1))
+    mu, var, n
 end
 
 function mean_std(A::SparseMatrixCSC)
@@ -107,7 +115,7 @@ function log_VMR(A::SparseMatrixCSC)
     [log_VMR(x) for x in eachcol(A)]
 end
 
-function scale_data(A::SparseMatrixCSC; scale_max::Float64=10)
+function scale_data(A::SparseMatrixCSC; scale_max::Float64=10.)
     n, d = size(A)
     B = similar(A, Float64)
 
