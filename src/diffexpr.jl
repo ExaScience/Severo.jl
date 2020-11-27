@@ -1,4 +1,4 @@
-import DataFrames: DataFrame, sort
+import DataFrames: DataFrame, sort!, select!, by, Not
 import SparseArrays: nonzeros, nonzeroinds
 import Distributions: TDist
 
@@ -168,11 +168,11 @@ Finds markers (differentially expressed genes) for each of the classes in a data
     -``X``: count or data matrix
     -``idents``: class identity for each cell
     -``method``: Which test to use, supported are: [wilcoxon]
-    -``logfc_threshold``: Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells
     -``kw...``: additional parameters passed down to the method
 
 **Return values**:
 
+A `DataFrame` containing a list of putative markers with associated statistics (p-values and scores) and log fold-changes.
 """
 function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, log::Bool=false, kw...)
     @assert ! isa(X, NamedCountMatrix) || !log "strange combination of count data and log"
@@ -220,7 +220,36 @@ function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedV
         logfc[i, :] = mu1 .- mu2
     end
 
-    de = DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
+    DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
               group=repeat(1:nlabels, inner=nfeatures), marker=repeat(names(X,2), outer=nlabels))
-    sort(de, [:group, :pval, :logfc])
+end
+
+"""
+    filter_rank_markers(de::DataFrame; pval_thresh::Real=1e-2, ngenes::Integer=typemax(Int64))
+
+Filters and ranks a list of markers (differentially expressed genes).
+
+**Arguments**:
+
+    -``de``: list of markers returned by [findmarkers](@ref)
+    -``pval_thresh``: only keep markers with pval < pval_thresh
+    -``count``: the number of highest-ranked markers to keep
+    -``rankby_abs``: rank based on absolute value of the scores
+
+**Return values**:
+
+A `DataFrame` containing a ranked list of filtered markers.
+"""
+function filter_rank_markers(de::DataFrame; pval_thresh::Real=1e-2, count::Integer=typemax(Int64), rankby_abs::Bool=false)
+    by(de, :group, sort=true) do x
+        x = x[x[!,:pval] .< pval_thresh, :]
+        if rankby_abs
+            x[!,:abs_score] .= abs.(x[!,:score])
+            sort!(x, [:abs_score, :logfc], rev=true)
+            select!(x, Not(:abs_score))
+        else
+            sort!(x, [:score, :logfc], rev=true)
+        end
+        x[1:min(count, size(x,1)), :]
+    end
 end
