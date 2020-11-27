@@ -35,7 +35,7 @@ include("diffexpr.jl")
 
 export CountMatrix, NamedCountMatrix, DataMatrix, NamedDataMatrix
 export read_10X, read_10X_h5, read_h5, read_h5ad, write_h5ad, read_csv, read_geo, read_data
-export convert_counts, filter_counts, dataset
+export convert_counts, filter_counts, filter_features, filter_cells, dataset
 export normalize, scale, find_variable_features
 export embedding, pca, umap
 export nearest_neigbours, shared_nearest_neigbours

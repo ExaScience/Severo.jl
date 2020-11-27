@@ -2,7 +2,7 @@ using Cell, Test
 import SparseArrays: sprand, sparse
 import Distributions: Poisson, rand
 
-@testset "input" begin
+@testset "filter" begin
     X = sprand(100, 10, .1, (i) -> rand(Poisson(4), i))
     C = convert_counts(X)
     @test size(C) == (100,10)
