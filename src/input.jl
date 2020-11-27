@@ -1,4 +1,5 @@
 import CSV
+import DataFrames: DataFrame
 import GZip
 import HDF5
 import HDF5: h5open, attrs, exists, filename
@@ -186,7 +187,7 @@ function readDelim(fname::AbstractString; kw...)
     end
 
     try
-        CSV.read(io; kw...)
+        CSV.read(io, DataFrame; kw...)
     finally
         close(io)
     end
@@ -241,7 +242,7 @@ struct ParseError_H5AD <: Exception
     msg::AbstractString
 end
 
-function read_h5ad_attr(attrs::HDF5.HDF5Attributes, desc::String, names::Vector{String})
+function read_h5ad_attr(attrs::HDF5.Attributes, desc::String, names::Vector{String})
     idx =  findfirst(x -> exists(attrs, x), names)
 
     if idx === nothing
