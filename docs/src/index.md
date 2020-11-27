@@ -18,6 +18,7 @@ Depth = 1
 ```@contents
 Pages = [
     "pbmc.md",
+    "performance.md",
 ]
 Depth = 1
 ```

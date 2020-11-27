@@ -12,6 +12,7 @@ makedocs(
         "Home" => "index.md",
         "Showcases" => [
             "pbmc.md",
+            "performance.md",
         ],
         "Library" => [
             "Public" => "public.md",
