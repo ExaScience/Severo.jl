@@ -216,9 +216,9 @@ Scale and center a count/data matrix along the cells such that each feature is s
 
 **Return values**:
 
-A labelled scaled matrix and its mean
+A centered matrix
 """
 function scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf) where T
     B, mu = scale_data(X.array; scale_max=scale_max)
-    NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],))
+    CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
 end

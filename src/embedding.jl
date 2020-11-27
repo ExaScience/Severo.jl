@@ -32,7 +32,12 @@ function _pca(X, npcs::Int64; algorithm=:irlba, kw...)
 
     Z = view(S.U, :, 1:npcs) * Diagonal(view(S.S, 1:npcs))
     stdev = view(S.S, 1:npcs) ./ sqrt(max(1, size(X,1) - 1))
-    loadings = view(S.V, :, 1:npcs)
+    loadings = if npcs != size(S.V, 2)
+        view(S.V, :, 1:npcs)
+    else
+        S.V
+    end
+
     Z, stdev, loadings
 end
 
@@ -92,5 +97,3 @@ function embedding(X, ncomponents::Int64; method=:pca, kw...)
         error("unknown reduction method: $method")
     end
 end
-
-embedding(X::Tuple{<:AbstractMatrix, <:AbstractVector}, ncomponents::Int64; kw...) = embedding(CenteredMatrix(first(X), last(X)), ncomponents; kw...)
