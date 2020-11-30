@@ -14,8 +14,13 @@ function mean_var(x::Union{SparseColumnView,SparseVector})
         s += delta * (v - mu)
     end
 
-    std = s / (n - 1)
-    mu, std
+    var = s / (n - 1)
+    mu, var
+end
+
+function mean_std(x::Union{SparseColumnView,SparseVector})
+    mu, var = mean_var(x)
+    mu, sqrt(var)
 end
 
 function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
@@ -198,17 +203,6 @@ eltype(S::CenteredMatrix{P, T, R}) where {P,T,R} = P
 size(S::CenteredMatrix) = size(S.A)
 adjoint(S::CenteredMatrix) = Adjoint(S)
 
-function show(io::IO, C::CenteredMatrix)
-    print(io, "CenteredMatrix(A=$(C.A), mu=$(C.mu))")
-end
-
-function show(io::IO, ::MIME"text/plain", C::CenteredMatrix)
-    println(io, "CenteredMatrix:")
-    ioc = IOContext(io, :compact=>true, :limit=>true)
-    println(ioc, "  A = ", C.A)
-    print(ioc, "  mu = ", C.mu)
-end
-
 function mul!(C::StridedVector, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
     mul!(C, S.A, v, α, β)
     C .-= α * dot(S.mu, v)
@@ -258,7 +252,8 @@ Scale and center a count/data matrix along the cells such that each feature is s
 
 A centered matrix
 """
-function scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf) where T
+function scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf) where T
+    scale_max = convert(Float64, scale_max)
     B, mu = scale_data(X.array; scale_max=scale_max)
     CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
 end
