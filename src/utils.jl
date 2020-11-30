@@ -1,3 +1,5 @@
+import Statistics: quantile
+
 function make_unique!(out::AbstractVector{T}, names::AbstractVector{T}, sep::AbstractString=".") where {T <: AbstractString}
     seen = Dict{T, Int64}()
     n = length(names)
@@ -102,14 +104,22 @@ function cut!(labels::AbstractVector, v::AbstractVector, breaks::AbstractVector;
 end
 
 cut(v::AbstractVector, breaks::AbstractVector; right=true) = cut!(similar(v, Int64), v, breaks; right=right)
-function cut(v::AbstractVector, nbreaks::Int64; right=true)
-    min_v, max_v = extrema(v)
-    dx = max_v - min_v
+function cut(v::AbstractVector, nbreaks::Int64; method=:width, right=true)
+    breaks = if method == :width
+        min_v, max_v = extrema(v)
+        dx = max_v - min_v
 
-    breaks = collect(range(min_v, max_v, length=nbreaks+1))
-    breaks[1] -= dx/1000
-    breaks[end] += dx/1000
-    _cut!(similar(v, Int64), v, breaks; right=right)
+        breaks = collect(range(min_v, max_v, length=nbreaks+1))
+        breaks[1] -= dx/1000
+        breaks[end] += dx/1000
+        breaks
+    elseif method == :frequency
+        quantile(v, range(0, 1.0, length=nbreaks))
+    else
+        error("unknown binning method: $method")
+    end
+
+    breaks, _cut!(similar(v, Int64), v, breaks; right=right)
 end
 
 function rep_each(x::AbstractVector{Tv}, each::AbstractVector{Ti}) where {Tv, Ti <: Integer}
