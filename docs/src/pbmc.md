@@ -95,3 +95,25 @@ hvf = find_variable_features(X, 2000; method=:vst)
 ```@docs
 find_variable_features
 ```
+
+## Dimensionality reduction
+
+### Scaling
+
+Prior to dimensional reduction techniques like PCA, it's a good idea to `scale` the data. Scaling performs two basic operations:
+
+- Shifts the expression of each gene, so that the mean expression across cells is 0
+- Scales the expression of each gene, so that the standard deviation across cells is 1. This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
+- Clips values exceeding standard deviation of `scale_max`
+
+```@example pbmc
+S = scale(Y; scale_max=10)
+```
+
+### Principal component analysis
+
+Reduce the dimensionality of the data by running principal component analysis (PCA), which reveals the main axes of variation and de-noises the data.
+
+```@example pbmc
+em = embedding(S, 15, method=:pca)
+```
