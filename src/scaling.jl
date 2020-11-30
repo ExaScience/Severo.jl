@@ -1,6 +1,6 @@
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, Adjoint, nonzeros, nonzeroinds, nnz, nzrange
 
-function mean_std(x::Union{SparseColumnView,SparseVector})
+function mean_var(x::Union{SparseColumnView,SparseVector})
     n = length(x)
 
     count = n - nnz(x)
@@ -14,7 +14,7 @@ function mean_std(x::Union{SparseColumnView,SparseVector})
         s += delta * (v - mu)
     end
 
-    std = sqrt(s / (n - 1))
+    std = s / (n - 1)
     mu, std
 end
 
@@ -62,13 +62,38 @@ function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{
     mu, var, n
 end
 
+function mean_var(x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+    @assert length(x) == length(lbls)
+
+    mu = zeros(nlabels)
+    var = zeros(nlabels)
+    n = zeros(Int64, nlabels)
+
+    @inbounds for (v,k) in zip(x, lbls)
+        n[k] += 1
+        delta = (v - mu[k])
+        mu[k] += delta / n[k]
+        var[k] += delta * (v - mu[k])
+    end
+
+    var ./= (n .- 1)
+    mu, var, n
+end
+
+function mean_std(x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+    mu, var = mean_var(x, lbls, nlabels)
+    var .= sqrt.(var)
+    mu, var
+end
+
 function mean_std(A::SparseMatrixCSC)
     n, d = size(A)
     mu = zeros(d)
     std = zeros(d)
 
-    for (i, a) in enumerate(eachcol(A))
-        mu[i], std[i] = mean_std(a)
+    @inbounds for (i, a) in enumerate(eachcol(A))
+        mu[i], v = mean_var(a)
+        std[i] = sqrt(v)
     end
 
     mu, std
@@ -79,9 +104,8 @@ function mean_var(A::SparseMatrixCSC)
     mu = zeros(d)
     var = zeros(d)
 
-    for (i, a) in enumerate(eachcol(A))
-        mu[i], std = mean_std(a)
-        var[i] = std^2
+    @inbounds for (i, a) in enumerate(eachcol(A))
+        mu[i], var[i] = mean_var(a)
     end
 
     mu, var
@@ -90,7 +114,10 @@ end
 mean_std(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_std(copy(adjA))
 mean_var(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_var(copy(adjA))
 
-function log_VMR(x::Union{SparseColumnView,SparseVector})
+"""
+variance to mean ratio (VMR) in non-logspace
+"""
+function mean_var(f::Function, x::Union{SparseColumnView,SparseVector})
     n = length(x)
 
     count = n - nnz(x)
@@ -99,21 +126,34 @@ function log_VMR(x::Union{SparseColumnView,SparseVector})
     # nonzeros
     for v in nonzeros(x)
         count += 1
-        expm1_v = expm1(v)
-        delta = (expm1_v - mu)
+        f_v = f(v)
+        delta = (f_v - mu)
         mu += delta / count
-        var += delta * (expm1_v - mu)
+        var += delta * (f_v - mu)
     end
 
-    log(var/mu)
+    var /= (n .- 1)
+    mu, var
 end
 
-"""
-variance to mean ratio (VMR) in non-logspace
-"""
-function log_VMR(A::SparseMatrixCSC)
-    [log_VMR(x) for x in eachcol(A)]
+function mean_var(f::Function, A::SparseMatrixCSC)
+    n, d = size(A)
+    mu = zeros(d)
+    var = zeros(d)
+
+    @inbounds for (i, a) in enumerate(eachcol(A))
+        mu[i], var[i] = mean_var(f, a)
+    end
+
+    mu, var
 end
+
+function log_VMR(f::Function, A::SparseMatrixCSC)
+    mu, var = Cell.mean_var(f, A)
+    log1p.(mu), log.(var ./ mu)
+end
+
+log_VMR(A::SparseMatrixCSC) = log_VMR(identity, A)
 
 function scale_data(A::SparseMatrixCSC; scale_max::Float64=10.)
     n, d = size(A)
