@@ -45,3 +45,9 @@ function plot_embedding(em::LinearEmbedding)
     labels = names(em.coordinates,2)
     scatter(em.coordinates[:,1], em.coordinates[:,2], xlabel=labels[1], ylabel=labels[2], legend=nothing)
 end
+
+function plot_elbow(em::LinearEmbedding)
+    scatter(em.stdev, xlabel="Component", ylabel="Standard deviation")
+end
+
+export plot_highest_expressed, plot_embedding, plot_loadings, plot_elbow
