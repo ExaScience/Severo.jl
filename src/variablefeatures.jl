@@ -13,6 +13,10 @@ function standardized_var_clipped(A::SparseMatrixCSC{<:Integer}, mu::Vector{R}, 
     var_stand
 end
 
+function nan2zero!(v::AbstractVector{T}) where {T <: AbstractFloat}
+    v .= ifelse.(isnan.(v), 0.0, v)
+end
+
 function variance_stabilizing_transformation(A::SparseMatrixCSC{<:Integer}; loess_span=0.5)
     mu, std = mean_std(A)
     non_const = std .> 0
@@ -24,7 +28,7 @@ function variance_stabilizing_transformation(A::SparseMatrixCSC{<:Integer}; loes
     expected_std[non_const] = 10 .^ predict(model, xs)
 
   # workaround for bug in loess
-    expected_std[isnan.(expected_std)] .= 0.0
+    expected_std = nan2zero!(expected_std)
 
     standardized_var_clipped(A, mu, expected_std)
 end
@@ -53,6 +57,27 @@ function select_features_saunders(counts::SparseMatrixCSC{<:Integer}, norm::Spar
     metric
 end
 
+function select_dispersion(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_method=:width)
+    mu, disp = Cell.log_VMR(norm)
+    nan2zero!(disp)
+end
+
+function select_meanvarplot(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_method=:width)
+    mu, disp = Cell.log_VMR(norm)
+    mu = nan2zero!(mu)
+    disp = nan2zero!(disp)
+
+    breaks, bins = cut(mu, num_bins; method=binning_method)
+    bin_mean, bin_std = mean_std(disp, bins, num_bins)
+
+    @inbounds @simd for i = 1:length(disp)
+        k = bins[i]
+        disp[i] = (disp[i] - bin_mean[k]) / bin_std[k]
+    end
+
+    nan2zero!(disp)
+end
+
 function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
@@ -60,7 +85,7 @@ function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method
 
     metric = if method == :vst
         variance_stabilizing_transformation(counts.array, kw...)
-    elseif method == :saunders
+    else
         norm = if :norm in keys(kw)
             norm = kw[:norm]
             isa(norm, NamedArray) ? norm.array : norm
@@ -68,11 +93,21 @@ function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method
             row_norm(counts.array)
         end
 
-        var_thresh = get(kw, :var_thresh, 0.1)
-        alpha_thresh = get(kw, :alpha_thresh, 0.1)
-        select_features_saunders(counts.array, norm; alpha_thresh=alpha_thresh, var_thresh=var_thresh)
-    else
-        error("unknown selection method: $method")
+        if method == :saunders
+            var_thresh = get(kw, :var_thresh, 0.1)
+            alpha_thresh = get(kw, :alpha_thresh, 0.1)
+            select_features_saunders(counts.array, norm; alpha_thresh=alpha_thresh, var_thresh=var_thresh)
+        elseif method == :dispersion
+            num_bins = get(kw, :num_bins, 20)
+            binning_method = get(kw, :binning_method, :width)
+            select_dispersion(norm; num_bins=num_bins, binning_method=binning_method)
+        elseif method == :meanvarplot
+            num_bins = get(kw, :num_bins, 20)
+            binning_method = get(kw, :binning_method, :width)
+            select_meanvarplot(norm; num_bins=num_bins, binning_method=binning_method)
+        else
+            error("unknown selection method: $method")
+        end
     end
 
     selected = partialsortperm(metric, 1:nfeatures, rev=true)
