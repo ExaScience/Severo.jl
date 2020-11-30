@@ -233,6 +233,10 @@ function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
     convert(T, X)
 end
 
+function convert(::Type{<:NamedArray}, C::NamedCenteredMatrix)
+    NamedArray(convert(Matrix, C), C.A.dicts, C.A.dimnames)
+end
+
 names(C::NamedCenteredMatrix) = names(C.A)
 names(C::NamedCenteredMatrix, d::Integer) = names(C.A, d)
 dimnames(C::NamedCenteredMatrix) = dimnames(C.A)
