@@ -107,6 +107,7 @@ Prior to dimensional reduction techniques like PCA, it's a good idea to `scale` 
 - Clips values exceeding standard deviation of `scale_max`
 
 ```@example pbmc
+Y = Y[:,hvf] # only use highly-variable features
 S = scale(Y; scale_max=10)
 ```
 
