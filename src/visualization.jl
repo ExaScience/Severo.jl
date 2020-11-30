@@ -1,3 +1,5 @@
+using Plots
+
 """
     plot_highly_expressed_genes(X::NamedCountMatrix, n::Int64; dropfeatures::Union{Nothing, AbstractArray}=nothing)
 
@@ -25,4 +27,21 @@ function plot_highest_expressed(X::NamedCountMatrix; n::Int64=10, dropfeatures::
     top_counts = norm[:, top_idx]
     labels = reshape(names(top_counts, 2), 1, :)
     boxplot(top_counts, labels=labels)
+end
+
+function plot_loadings(em::LinearEmbedding, dims::AbstractVector{<:Integer}=1:5, nfeatures::Integer=10)
+    loadings = em.basis
+
+    p = map(dims) do dim
+        x = loadings.array[:,dim]
+        features = partialsortperm(x, 1:nfeatures, rev=true)
+        n = names(loadings, 1)[features]
+        scatter(x[features], 1:nfeatures, yticks=(1:nfeatures, n), yrotation=90, legend=nothing)
+    end
+    plot(p...)
+end
+
+function plot_embedding(em::LinearEmbedding)
+    labels = names(em.coordinates,2)
+    scatter(em.coordinates[:,1], em.coordinates[:,2], xlabel=labels[1], ylabel=labels[2], legend=nothing)
 end
