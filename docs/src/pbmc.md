@@ -87,3 +87,11 @@ normalize
 ### Identifying highly variable features
 
 Next, we select a subset of features that exhibit high cell-to-cell variation in the dataset (i.e, they are highly expressed in some cells, and lowly expressed in others).
+
+```@example pbmc
+hvf = find_variable_features(X, 2000; method=:vst)
+```
+
+```@docs
+find_variable_features
+```
