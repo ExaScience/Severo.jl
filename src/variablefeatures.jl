@@ -78,6 +78,38 @@ function select_meanvarplot(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_
     nan2zero!(disp)
 end
 
+"""
+    find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, kw...)
+
+Identification of highly variable features: find features that exhibit high cell-to-cell variation in the dataset
+(i.e, they are highly expressed in some cells, and lowly expressed in others).
+
+**Arguments**:
+
+    -`counts`: count matrix
+    -`nfeatures`: the number of top-ranking features to return
+    -`method`: how to choose top variable features
+    -`kw`: additional keyword arguments to pass along to the method
+
+*Methods**:
+
+    -`:vst`: fits a line to the log(mean) - log(variance) relationship, then standardizes the features values
+        using the observed mean and expected variance. Finally, feature variance is calculated using the standardized values.
+
+        - `loess_span`: span parameter for loess regression when fitting the mean-variance relationship
+
+    -`dispersion`: selects the genes with the highest dispersion values
+
+    -`meanvarplot`: calculates the feature mean and dispersion, bins the mean according into `num_bins` bins.
+        Finally, returns the z-scores for dispersion within each bin.
+
+        - `num_bins`: Total number of bins to use
+        - `binning_method`: Specifies how the bins should be computed. Available: `:width` for equal width and `:frequency` for equal frequency binning
+
+**Return value**:
+
+The `nfeatures` top-ranked features
+"""
 function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
