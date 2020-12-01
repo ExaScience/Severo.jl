@@ -58,7 +58,7 @@ lbls = NamedArray(lbls, names(X,1))
          0.2551103361614  -0.2551103361614
    ]
 
-    de = Cell.findmarkers(X, lbls, method=:t)
+    de = Cell.find_markers(X, lbls, method=:t)
     @test de[!,:score] ≈ vec(true_scores) # assumes 'de' is sorted by [group, marker]
 end
 
@@ -71,7 +71,7 @@ end
         0.45551138123867, 0.53433311634786, 0.88879550022386, 0.79225415168002
     ]
 
-    de = Cell.findmarkers(X, lbls, method=:wilcoxon)
+    de = Cell.find_markers(X, lbls, method=:wilcoxon)
     @test de[!,:pval] ≈ repeat(true_pvals, outer=2) # assumes 'de' is sorted by [group, marker]
 end
 

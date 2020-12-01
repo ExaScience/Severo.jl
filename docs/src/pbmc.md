@@ -181,14 +181,16 @@ cluster
 ## Finding differentially expressed features
 
 We can find markers that define clusters via differential expression. It identifies positive and negative markers for a single cluster compared to the other cells.
-`findmarkers` performs this process for every cluster. The function returns a `DataFrame` containing for each marker: the p-value, the log-foldchange and statistical score.
+`find_markers` performs this process for every cluster. The function returns a `DataFrame` containing for each marker: the p-value, the log-foldchange and statistical score.
 
 ```@example pbmc
-dx = findmarkers(X, lbls; method=:wilcoxon)
+dx = find_markers(X, lbls; method=:wilcoxon)
+dx = filter_rank_markers(dx)
+dx[:,1:10]
 ```
 
 ```@docs
-findmarkers
+find_markers
 ```
 
 ```@example pbmc

@@ -159,7 +159,7 @@ function filter_features(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Na
 end
 
 """
-    findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, kw...)
+    find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, kw...)
 
 Finds markers (differentially expressed genes) for each of the classes in a dataset.
 
@@ -174,7 +174,7 @@ Finds markers (differentially expressed genes) for each of the classes in a data
 
 A `DataFrame` containing a list of putative markers with associated statistics (p-values and scores) and log fold-changes.
 """
-function findmarkers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, log::Bool=false, kw...)
+function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, log::Bool=false, kw...)
     @assert ! isa(X, NamedCountMatrix) || !log "strange combination of count data and log"
 
     if isa(method, AbstractString)
@@ -231,7 +231,7 @@ Filters and ranks a list of markers (differentially expressed genes).
 
 **Arguments**:
 
-    -`de`: list of markers returned by [findmarkers](@ref)
+    -`de`: list of markers returned by [find_markers](@ref)
     -`pval_thresh`: only keep markers with pval < pval_thresh
     -`count`: the number of highest-ranked markers to keep
     -`rankby_abs`: rank based on absolute value of the scores
