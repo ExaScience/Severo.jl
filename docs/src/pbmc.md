@@ -53,7 +53,8 @@ dataset
 ## Preprocessing
 
 ```@example pbmc
-using Plots, StatsPlots
+using Plots
+using StatsPlots
 pyplot() # hide
 plot_highest_expressed(X)
 savefig("he-plot.svg"); nothing # hide
@@ -186,7 +187,7 @@ We can find markers that define clusters via differential expression. It identif
 ```@example pbmc
 dx = find_markers(X, lbls; method=:wilcoxon)
 dx = filter_rank_markers(dx)
-dx[:,1:10]
+dx[1:10, :]
 ```
 
 ```@docs
