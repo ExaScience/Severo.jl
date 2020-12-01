@@ -15,6 +15,8 @@ const NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <
 
 const SparseVec = Union{SparseColumnView, SparseVector}
 
+import Requires: @require
+
 try
     include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
 catch e
@@ -33,6 +35,10 @@ include("clustering.jl")
 include("datasets.jl")
 include("diffexpr.jl")
 include("printing.jl")
+
+function __init__()
+    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("visualization.jl")
+end
 
 export CountMatrix, NamedCountMatrix, DataMatrix, NamedDataMatrix
 export read_10X, read_10X_h5, read_h5, read_h5ad, write_h5ad, read_csv, read_geo, read_data
