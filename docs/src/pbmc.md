@@ -52,6 +52,16 @@ dataset
 
 ## Preprocessing
 
+```@example pbmc
+using Plots, StatsPlots
+pyplot() # hide
+plot_highest_expressed(X)
+savefig("he-plot.svg"); nothing # hide
+```
+
+![](he-plot.svg)
+
+
 ### Filtering
 
 Two filtering function are available for filtering cells and features/genes based on basic criteria such as the number of features
@@ -111,10 +121,59 @@ Y = Y[:,hvf] # only use highly-variable features
 S = scale(Y; scale_max=10)
 ```
 
+```@docs
+scale
+```
+
 ### Principal component analysis
 
 Reduce the dimensionality of the data by running principal component analysis (PCA), which reveals the main axes of variation and de-noises the data.
 
 ```@example pbmc
 em = embedding(S, 15, method=:pca)
+```
+
+```@example pbmc
+plot_elbow(em)
+savefig("elbow-plot.svg"); nothing # hide
+```
+
+![](elbow-plot.svg)
+
+```@docs
+embedding
+```
+
+## Clustering the cells
+
+Briefly, the clustering embed cells in a graph structure with edges between cells with similar feature expression patterns, and then attempt to partition this graph into highly interconnected 'quasi-cliques' or 'communities'.
+
+### Computing the neighborhood graph
+
+First, we need to find the k-nearest neighbors of all the cells based on the euclidean distance in PCA space, and then compute a graph based on the shared overlap in the local neighborhoods between any two cells (Jaccard similarity). These step are performed using the `nearest_neigbours` and `jaccard_index` functions. For convenience, the two steps are also combined in the `shared_nearest_neigbours` function.
+
+```@example pbmc
+nn = nearest_neigbours(em, 20, 1:10)
+snn = jaccard_index(nn, prune=1/15)
+# or as a single step
+#snn = nearest_neigbours(em, 20, 1:10, prune=1/15)
+```
+
+```@docs
+nearest_neighbours
+jaccard_index
+shared_nearest_neighbours
+```
+
+### Clustering the neighborhood graph
+
+Clustering is performed using a graph-based method called `Louvain clustering` which tries to detect communities based on optimizing a modularity function.
+Since this is a greedy algorithm, which can get stuck in local minima based on random initialization, multiple restarts are required to find a more "global" minima.
+
+```@example pbmc
+lbls = cluster(snn)
+```
+
+```@docs
+cluster
 ```
