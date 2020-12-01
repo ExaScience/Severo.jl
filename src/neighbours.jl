@@ -12,7 +12,7 @@ function ann(X, k; ntables=2*size(X,2))
     nn_index, distances
 end
 
-function nearest_neigbours(X::AbstractMatrix, k::Int64; ntables::Int64=2*size(X,2))
+function nearest_neighbours(X::AbstractMatrix, k::Int64; ntables::Int64=2*size(X,2))
     nn_index, distances = ann(X, k, ntables=ntables)
     sparse(repeat(1:size(nn_index,1),k), vec(nn_index), trues(length(nn_index)))
 end
@@ -55,10 +55,13 @@ of the union. "0" indicating no overlap and "1" indicating full overlap.
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-jaccard_index(nn::NamedArray{T,2}; prune::Real=1/15) where T = jaccard_index(nn.array; prune=prune)
+function jaccard_index(nn::NamedArray{T,2}; prune::Real=1/15) where T
+    snn = jaccard_index(nn.array; prune=prune)
+    NamedArray(snn, (nn.dicts[1], nn.dicts[1]), (nn.dimnames[1], nn.dimnames[1]))
+end
 
 """
-    nearest_neigbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
+    nearest_neighbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell.
 
@@ -73,18 +76,18 @@ Compute a k-nearest neighbours graph based on coordinates for each cell.
 
 A k-nearest neighbours graph represented by a sparse matrix
 """
-function nearest_neigbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2)) where T
-    nn = nearest_neigbours(X.array[:,dims], k; ntables=ntables)
-    NamedArray(nn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
+function nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2)) where T
+    nn = nearest_neighbours(X.array[:,dims], k; ntables=ntables)
+    NamedArray(nn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
-function nearest_neigbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntables::Int64=2*size(X,2)) where T
-    nn = nearest_neigbours(X.array, k; ntables=ntables)
-    NamedArray(nn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
+function nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntables::Int64=2*size(X,2)) where T
+    nn = nearest_neighbours(X.array, k; ntables=ntables)
+    NamedArray(nn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
 """
-    nearest_neigbours(em::LinearEmbedding, k::Int64; ntables::Int64=2*size(X,2)) where T
+    nearest_neighbours(em::LinearEmbedding, k::Int64; ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on an embedding
 
@@ -99,10 +102,10 @@ Compute a k-nearest neighbours graph based on an embedding
 
 A k-nearest neighbours graph represented by a sparse matrix
 """
-nearest_neigbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neigbours(em.coordinates, k, dims; kw...)
+nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neighbours(em.coordinates, k, dims; kw...)
 
 """
-    shared_nearest_neigbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
+    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell and its Jaccard index.\\
 The Jaccard index measures similarity between nearest neighbour sets, and is defined as
@@ -121,16 +124,16 @@ the size of the intersection divided by the size of the union. "0" indicating no
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-function shared_nearest_neigbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neigbours(X.array[:,dims], k; ntables=ntables)
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(X.array[:,dims], k; ntables=ntables)
     snn = jaccard_index(nn, k; prune=prune)
-    NamedArray(snn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
+    NamedArray(snn, (X.dicts[1], X.dicts[1]), (nn.dimnames[1], nn.dimnames[1]))
 end
 
-function shared_nearest_neigbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neigbours(X.array, k; ntables=ntables)
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(X.array, k; ntables=ntables)
     snn = jaccard_index(nn, k; prune=prune)
-    NamedArray(snn, (X.dicts[1], X.dicts[1]), (:cells, :cells))
+    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
-shared_nearest_neigbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neigbours(em.coordinates, k; kw...)
+shared_nearest_neighbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neighbours(em.coordinates, k; kw...)
