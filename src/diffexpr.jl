@@ -1,4 +1,4 @@
-import DataFrames: DataFrame, sort!, select!, by, Not
+import DataFrames: DataFrame, sort!, select!, groupby, combine, Not
 import SparseArrays: nonzeros, nonzeroinds
 import Distributions: TDist
 
@@ -241,7 +241,7 @@ Filters and ranks a list of markers (differentially expressed genes).
 A `DataFrame` containing a ranked list of filtered markers.
 """
 function filter_rank_markers(de::DataFrame; pval_thresh::Real=1e-2, count::Integer=typemax(Int64), rankby_abs::Bool=false)
-    by(de, :group, sort=true) do x
+    combine(groupby(de, :group, sort=true)) do x
         x = x[x[!,:pval] .< pval_thresh, :]
         if rankby_abs
             x[!,:abs_score] .= abs.(x[!,:score])
