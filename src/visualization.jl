@@ -1,4 +1,5 @@
-using Plots
+import Plots: plot, scatter
+import StatsPlots: boxplot
 
 """
     plot_highly_expressed_genes(X::NamedCountMatrix, n::Int64; dropfeatures::Union{Nothing, AbstractArray}=nothing)
@@ -25,29 +26,74 @@ function plot_highest_expressed(X::NamedCountMatrix; n::Int64=10, dropfeatures::
     top_idx = partialsortperm(mean_percent, 1:n, rev=true)
 
     top_counts = norm[:, top_idx]
-    labels = reshape(names(top_counts, 2), 1, :)
-    boxplot(top_counts, labels=labels)
+    labels = names(top_counts, 2)
+    boxplot(top_counts, xticks=(1:n, labels), legend=nothing)
 end
 
-function plot_loadings(em::LinearEmbedding, dims::AbstractVector{<:Integer}=1:5, nfeatures::Integer=10)
+"""
+    plot_loadings(em::LinearEmbedding; dims::AbstractVector{<:Integer}=1:6, nfeatures::Integer=10)
+
+Visualize top genes associated with reduction components
+
+**Arguments**:
+
+    -``em``: a linear embedding
+    -``dims``: which components to display
+    -``nfeatures``: number of genes to display
+
+**Return value**:
+
+A plot object
+"""
+function plot_loadings(em::LinearEmbedding; dims::AbstractVector{<:Integer}=1:6, nfeatures::Integer=10)
     loadings = em.basis
 
+    featn, dimn = names(loadings)
     p = map(dims) do dim
         x = loadings.array[:,dim]
         features = partialsortperm(x, 1:nfeatures, rev=true)
-        n = names(loadings, 1)[features]
-        scatter(x[features], 1:nfeatures, yticks=(1:nfeatures, n), yrotation=90, legend=nothing)
+        n = featn[features]
+        scatter(x[features], 1:nfeatures, yticks=(1:nfeatures, n), yrotation=90, legend=nothing, title=dimn[dim])
     end
     plot(p...)
 end
 
+"""
+    plot_embedding(em::LinearEmbedding)
+
+Plots the output of a dimensional reduction technique on a 2D scatter plot where each point is a
+cell and it's positioned based on the cell embeddings determined by the reduction technique.
+
+**Arguments**:
+
+    -``em``: a linear embedding
+
+**Return value**:
+
+A plot object
+
+"""
 function plot_embedding(em::LinearEmbedding)
     labels = names(em.coordinates,2)
     scatter(em.coordinates[:,1], em.coordinates[:,2], xlabel=labels[1], ylabel=labels[2], legend=nothing)
 end
 
+"""
+    plot_elbow(em::LinearEmbedding)
+
+Plots the standard deviations of the principle components for easy identification of an elbow in the graph.
+
+**Arguments**:
+
+    -``em``: a linear embedding
+
+**Return value**:
+
+A plot object
+
+"""
 function plot_elbow(em::LinearEmbedding)
-    scatter(em.stdev, xlabel="Component", ylabel="Standard deviation")
+    scatter(em.stdev, xlabel="Component", ylabel="Standard deviation", legend=nothing)
 end
 
 export plot_highest_expressed, plot_embedding, plot_loadings, plot_elbow
