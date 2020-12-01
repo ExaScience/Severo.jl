@@ -8,9 +8,9 @@ Plot the features with the highest average expression across all cells, along wi
 
 **Arguments**:
 
-    -``X``: the count matrix
-    -``n``: the number of the most expressed features to show
-    -``dropfeatures``: array with names, indices or bits indicating features to drop when plotting
+    -`X`: the count matrix
+    -`n`: the number of the most expressed features to show
+    -`dropfeatures`: array with names, indices or bits indicating features to drop when plotting
 
 **Return value**:
 
@@ -37,9 +37,9 @@ Visualize top genes associated with reduction components
 
 **Arguments**:
 
-    -``em``: a linear embedding
-    -``dims``: which components to display
-    -``nfeatures``: number of genes to display
+    -`em`: a linear embedding
+    -`dims`: which components to display
+    -`nfeatures`: number of genes to display
 
 **Return value**:
 
@@ -66,7 +66,7 @@ cell and it's positioned based on the cell embeddings determined by the reductio
 
 **Arguments**:
 
-    -``em``: a linear embedding
+    -`em`: a linear embedding
 
 **Return value**:
 
@@ -85,15 +85,20 @@ Plots the standard deviations of the principle components for easy identificatio
 
 **Arguments**:
 
-    -``em``: a linear embedding
+    -`em`: a linear embedding
 
 **Return value**:
 
 A plot object
 
 """
-function plot_elbow(em::LinearEmbedding)
-    scatter(em.stdev, xlabel="Component", ylabel="Standard deviation", legend=nothing)
+function plot_elbow(em::LinearEmbedding; screeplot::Bool=true)
+    if screeplot
+        x = cumsum(em.stdev) ./ sum(em.stdev)
+        scatter(x, xlabel="Component", ylabel="Explained variability", legend=nothing)
+    else
+        scatter(em.stdev, xlabel="Component", ylabel="Standard deviation", legend=nothing)
+    end
 end
 
 export plot_highest_expressed, plot_embedding, plot_loadings, plot_elbow

@@ -102,11 +102,11 @@ Filter features for each of the classes in a dataset.
 
 **Arguments**:
 
-    -``X``: count or data matrix
-    -``idents``: class identity for each cell
-    -``logfc_threshold``: Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells
-    -``min_pct``: only test genes that are detected in a minimum fraction of min.pct cells in either of the two populations
-    -``min_diff_pct``: only test genes that show a minimum difference in the fraction of detection between the two groups.
+    -`X`: count or data matrix
+    -`idents`: class identity for each cell
+    -`logfc_threshold`: Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells
+    -`min_pct`: only test genes that are detected in a minimum fraction of min.pct cells in either of the two populations
+    -`min_diff_pct`: only test genes that show a minimum difference in the fraction of detection between the two groups.
 
 **Return values**:
 
@@ -165,10 +165,10 @@ Finds markers (differentially expressed genes) for each of the classes in a data
 
 **Arguments**:
 
-    -``X``: count or data matrix
-    -``idents``: class identity for each cell
-    -``method``: Which test to use, supported are: [wilcoxon]
-    -``kw...``: additional parameters passed down to the method
+    -`X`: count or data matrix
+    -`idents`: class identity for each cell
+    -`method`: Which test to use, supported are: [wilcoxon]
+    -`kw...`: additional parameters passed down to the method
 
 **Return values**:
 
@@ -231,10 +231,10 @@ Filters and ranks a list of markers (differentially expressed genes).
 
 **Arguments**:
 
-    -``de``: list of markers returned by [findmarkers](@ref)
-    -``pval_thresh``: only keep markers with pval < pval_thresh
-    -``count``: the number of highest-ranked markers to keep
-    -``rankby_abs``: rank based on absolute value of the scores
+    -`de`: list of markers returned by [findmarkers](@ref)
+    -`pval_thresh`: only keep markers with pval < pval_thresh
+    -`count`: the number of highest-ranked markers to keep
+    -`rankby_abs`: rank based on absolute value of the scores
 
 **Return values**:
 
