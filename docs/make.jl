@@ -21,3 +21,7 @@ makedocs(
         "contributing.md",
     ]
 )
+
+deploydocs(;
+    repo="github.imec.be/haber63/singlecell.git"
+)

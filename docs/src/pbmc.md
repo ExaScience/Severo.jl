@@ -150,13 +150,13 @@ Briefly, the clustering embed cells in a graph structure with edges between cell
 
 ### Computing the neighborhood graph
 
-First, we need to find the k-nearest neighbors of all the cells based on the euclidean distance in PCA space, and then compute a graph based on the shared overlap in the local neighborhoods between any two cells (Jaccard similarity). These step are performed using the `nearest_neigbours` and `jaccard_index` functions. For convenience, the two steps are also combined in the `shared_nearest_neigbours` function.
+First, we need to find the k-nearest neighbors of all the cells based on the euclidean distance in PCA space, and then compute a graph based on the shared overlap in the local neighborhoods between any two cells (Jaccard similarity). These step are performed using the `nearest_neighbours` and `jaccard_index` functions. For convenience, the two steps are also combined in the `shared_nearest_neighours` function.
 
 ```@example pbmc
-nn = nearest_neigbours(em, 20, 1:10)
+nn = nearest_neighbours(em, 20, 1:10)
 snn = jaccard_index(nn, prune=1/15)
 # or as a single step
-#snn = nearest_neigbours(em, 20, 1:10, prune=1/15)
+#snn = nearest_neighbours(em, 20, 1:10, prune=1/15)
 ```
 
 ```@docs
@@ -177,3 +177,24 @@ lbls = cluster(snn)
 ```@docs
 cluster
 ```
+
+## Finding differentially expressed features
+
+We can find markers that define clusters via differential expression. It identifies positive and negative markers for a single cluster compared to the other cells.
+`findmarkers` performs this process for every cluster. The function returns a `DataFrame` containing for each marker: the p-value, the log-foldchange and statistical score.
+
+```@example pbmc
+dx = findmarkers(X, lbls; method=:wilcoxon)
+```
+
+```@docs
+findmarkers
+```
+
+```@example pbmc
+plot_violin(X, ["CST3", "NKG7", "PPBP", "S100A4"], lbls)
+savefig("violin-plot.svg"); nothing # hide
+```
+
+![](violin-plot.svg)
+
