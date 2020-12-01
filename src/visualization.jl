@@ -1,5 +1,5 @@
 import Plots: plot, scatter
-import StatsPlots: boxplot
+import StatsPlots: boxplot, violin
 
 """
     plot_highly_expressed_genes(X::NamedCountMatrix, n::Int64; dropfeatures::Union{Nothing, AbstractArray}=nothing)
@@ -101,4 +101,34 @@ function plot_elbow(em::LinearEmbedding; screeplot::Bool=true)
     end
 end
 
-export plot_highest_expressed, plot_embedding, plot_loadings, plot_elbow
+function plot_rank_features_group(dx::DataFrame, group::Integer; features::Union{Nothing,AbstractArray}, ngenes::Integer=20)
+    if features === nothing
+        features = 1:ngenes
+    end
+
+
+end
+
+function plot_rank_features_group(dx::DataFrame, groups::AbstractVector{<:Integer}; features::Union{Nothing,AbstractArray}, ngenes::Integer=20)
+end
+
+function plot_violin(X::NamedCountMatrix, feature::Union{Integer, AbstractString}, lbls::AbstractVector{<:Integer})
+    x = X[:,feature]
+    feature_name = if feature isa AbstractString
+        feature
+    else
+        names(X,2)[feature]
+    end
+
+    violin(lbls, x, legend=nothing, ylabel=feature_name)
+end
+
+function plot_violin(X::NamedCountMatrix, features::AbstractArray, lbls::AbstractVector{<:Integer})
+    p = map(features) do feat
+        plot_violin(X, feat, lbls)
+    end
+
+    plot(p...)
+end
+
+export plot_highest_expressed, plot_embedding, plot_loadings, plot_elbow, plot_violin
