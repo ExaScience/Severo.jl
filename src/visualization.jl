@@ -1,5 +1,5 @@
-import Plots: plot, scatter
-import StatsPlots: boxplot, violin
+import Plots: plot, scatter, stroke, title!
+import StatsPlots: boxplot, violin, violin!, dotplot!
 
 """
     plot_highly_expressed_genes(X::NamedCountMatrix, n::Int64; dropfeatures::Union{Nothing, AbstractArray}=nothing)
@@ -101,18 +101,37 @@ function plot_elbow(em::LinearEmbedding; screeplot::Bool=true)
     end
 end
 
-function plot_rank_features_group(dx::DataFrame, group::Integer; features::Union{Nothing,AbstractArray}, ngenes::Integer=20)
-    if features === nothing
-        features = 1:ngenes
+function plot_rank_features_group(X::NamedCountMatrix, lbls::AbstractVector{<:Integer}, dx::DataFrame, group::Integer; nfeatures=10)
+    df = dx[dx[!,:group] .== group, :]
+    features = df[1:nfeatures, :feature]
+    plot_rank_features_group(X, lbls, features, group)
+end
+
+function plot_rank_features_group(X::NamedCountMatrix, lbls::AbstractVector{<:Integer}, features::AbstractArray, group::Integer)
+    n = length(features)
+    x = X[:, features]
+    features_names = names(x,2)
+
+    labels = repeat(1:n, inner=count(lbls .== group))
+    p = violin(labels, vec(x[lbls .== group,:]), side=:left, label="Group $group")
+
+    labels = repeat(1:n, inner=count(lbls .!= group))
+    violin!(p, labels, vec(x[lbls .!= group,:]), side=:right, label="Rest")
+    dotplot!(p, labels, vec(x[lbls .!= group,:]), marker=(:black,stroke(0, alpha=0.5)))
+
+    title!(p, "Group $group")
+    p
+end
+
+function plot_rank_features_group(X::NamedCountMatrix, lbls::AbstractVector{<:Integer}, features::AbstractArray, groups::AbstractVector{<:Integer})
+    p = map(groups) do group
+        plot_rank_features_group(X, lbls, features, group)
     end
 
-
+    plot(p...)
 end
 
-function plot_rank_features_group(dx::DataFrame, groups::AbstractVector{<:Integer}; features::Union{Nothing,AbstractArray}, ngenes::Integer=20)
-end
-
-function plot_violin(X::NamedCountMatrix, feature::Union{Integer, AbstractString}, lbls::AbstractVector{<:Integer})
+function plot_violin(X::NamedCountMatrix, feature::Union{Integer, AbstractString}, lbls::AbstractVector{<:Integer}; dot::Bool=false)
     x = X[:,feature]
     feature_name = if feature isa AbstractString
         feature
@@ -120,12 +139,17 @@ function plot_violin(X::NamedCountMatrix, feature::Union{Integer, AbstractString
         names(X,2)[feature]
     end
 
-    violin(lbls, x, legend=nothing, ylabel=feature_name)
+    p = violin(lbls, x, legend=nothing, linewidth=0, ylabel=feature_name)
+    if dot
+        dotplot!(p, lbls, x, marker=(:black,stroke(0, alpha=0.5)))
+    end
+
+    p
 end
 
-function plot_violin(X::NamedCountMatrix, features::AbstractArray, lbls::AbstractVector{<:Integer})
+function plot_violin(X::NamedCountMatrix, features::AbstractArray, lbls::AbstractVector{<:Integer}; dot::Bool=false)
     p = map(features) do feat
-        plot_violin(X, feat, lbls)
+        plot_violin(X, feat, lbls; dot=dot)
     end
 
     plot(p...)
