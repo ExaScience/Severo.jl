@@ -221,7 +221,7 @@ function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Named
     end
 
     DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
-              group=repeat(1:nlabels, inner=nfeatures), marker=repeat(names(X,2), outer=nlabels))
+              group=repeat(1:nlabels, inner=nfeatures), feature=repeat(names(X,2), outer=nlabels))
 end
 
 """
