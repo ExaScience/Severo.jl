@@ -5,11 +5,14 @@ import Distributions: TDist
 include("ranksum.jl")
 
 function wilcoxon_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
-        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
-    sel = BitArray(undef, length(lbls))
-    @inbounds for k in 1:nlabels
-        sel .= lbls .== k
-        scores[k], pvals[k] = ranksumtest(x, sel)
+        x::SparseVec, lbls::AbstractVector{<:Integer}, sel::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+    s = BitArray(undef, length(lbls))
+
+    idx = 1
+    @inbounds for k in sel
+        s .= lbls .== k
+        scores[idx], pvals[idx] = ranksumtest(x, s)
+        idx += 1
     end
 
     scores, pvals
@@ -32,16 +35,18 @@ function unequal_var_ttest(m1, v1, n1, m2, v2, n2)
 end
 
 function t_test!(scores::AbstractVector{Float64}, pvals::AbstractVector{Float64},
-        x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+        x::SparseVec, lbls::AbstractVector{<:Integer}, sel::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
     mu, var, n = mean_var(x, lbls, nlabels)
     mu2 = (sum(n .* mu) .- (n .* mu)) ./ (length(x) .- n)
 
     var2 = var .* (n.-1) .+ mu.^2 .*n
     var2 .= (sum(var2) .- var2 .- mu2.^2 .* (length(x) .- n)) ./ (length(x) .- n .- 1)
 
-    @inbounds for k in 1:nlabels
+    idx = 1
+    @inbounds for k in sel
         n2 = length(x) - n[k]
-        scores[k], pvals[k] = unequal_var_ttest(mu[k], var[k], n[k], mu2[k], var2[k], n2)
+        scores[idx], pvals[idx] = unequal_var_ttest(mu[k], var[k], n[k], mu2[k], var2[k], n2)
+        idx += 1
     end
 
     scores, pvals
@@ -174,7 +179,8 @@ Finds markers (differentially expressed genes) for each of the classes in a data
 
 A `DataFrame` containing a list of putative markers with associated statistics (p-values and scores) and log fold-changes.
 """
-function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, log::Bool=false, kw...)
+function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer};
+        method=:wilcoxon, log::Bool=false, selection::Union{Nothing, NamedArray{Bool, 2}, AbstractArray{Bool,2}}=nothing, kw...)
     @assert ! isa(X, NamedCountMatrix) || !log "strange combination of count data and log"
 
     if isa(method, AbstractString)
@@ -199,29 +205,87 @@ function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Named
         idents.array
     end
 
+    # fix label order if necessary
+    sel = if selection isa NamedArray{Bool,2}
+         convert(BitArray, if names(X, 2) != names(selection, 2)
+            selection[names(X,2)].array
+        else
+            selection.array
+        end)
+    else
+        selection
+    end
+
     mean_fun = if log
         log_means_exp
     else
         log_means
     end
 
+    find_markers(X, lbls, f!, mean_fun, sel, kw)
+end
+
+function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, lbls::AbstractVector{<:Integer}, f!::Function, mean_fun::Function, ::Nothing, kw)
+    ncells, nfeatures = size(X)
+
     # number of cells per class
     nlabels = count_labels(lbls)
     nc = count_map(lbls, nlabels)
 
-    scores = Matrix{Float64}(undef, nfeatures, nlabels)
-    pvals = Matrix{Float64}(undef, nfeatures, nlabels)
-    logfc = Matrix{Float64}(undef, nfeatures, nlabels)
+    scores = Matrix{Float64}(undef, nlabels, nfeatures)
+    pvals = Matrix{Float64}(undef, nlabels, nfeatures)
+    logfc = Matrix{Float64}(undef, nlabels, nfeatures)
 
     @inbounds for (i,x) in enumerate(eachcol(X.array))
         mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
 
-        f!(view(scores, i,:), view(pvals, i,:), x, lbls, nlabels; kw...)
-        logfc[i, :] = mu1 .- mu2
+        f!(view(scores, :,i), view(pvals, :,i), x, lbls, 1:nlabels, nlabels; kw...)
+        logfc[:, i] = mu1 .- mu2
     end
 
     DataFrame(score=vec(scores), pval=vec(pvals), logfc=vec(logfc),
-              group=repeat(1:nlabels, inner=nfeatures), feature=repeat(names(X,2), outer=nlabels))
+              group=repeat(1:nlabels, outer=nfeatures), feature=repeat(names(X,2), inner=nlabels))
+end
+
+function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, lbls::AbstractVector{<:Integer}, f!::Function,
+        mean_fun::Function, selection::BitArray{2}, kw)
+    ncells, nfeatures = size(X)
+
+    # number of cells per class
+    nlabels = count_labels(lbls)
+    nc = count_map(lbls, nlabels)
+
+    nf = vec(count(selection, dims=1))
+    n = sum(nf)
+
+    scores = Vector{Float64}(undef, n)
+    pvals = Vector{Float64}(undef, n)
+    logfc = Vector{Float64}(undef, n)
+    groups = Vector{Int64}(undef, n)
+    features = Vector{String}(undef, n)
+
+    feature_names = names(X,2)
+
+    idx = 1
+    @inbounds for i in 1:nfeatures
+        nf[i] == 0 && continue
+
+        x = view(X.array, :, i)
+        s = findall(view(selection, :, i))
+        r = idx:idx+nf[i]-1
+
+        mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
+        logfc[r] .= (mu1 .- mu2)[s]
+
+        f!(view(scores, r), view(pvals, r), x, lbls, s, nlabels; kw...)
+
+        groups[r] .= s
+        features[r] .= feature_names[i]
+
+        idx += nf[i]
+    end
+
+    DataFrame(score=scores, pval=pvals, logfc=logfc, group=groups, feature=features)
 end
 
 """

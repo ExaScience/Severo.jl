@@ -33,33 +33,25 @@ lbls = Cell.rep_each([1,2], [10, 90])
 X = convert_counts(X)
 lbls = NamedArray(lbls, names(X,1))
 
+sel = NamedArray(Bool[1 0 0 0 0 0 1 1 1 0 1 1 0 0 0 0 0 0 1 0; 1 0 1 1 1 0 1 0 1 1 1 1 0 0 0 1 1 0 1 0], (["1", "2"], names(X,2)))
+
 @testset "t-test" begin
     # computed using R's t.test
     true_scores = [
-        -1.5304460868698   1.5304460868698
-        -0.9331775615929   0.9331775615929
-        -2.8450731468119   2.8450731468119
-         0.5745765095031  -0.5745765095031
-        -1.526391759546    1.526391759546
-        -2.0760364545872   2.0760364545872
-        -2.3522619060766   2.3522619060766
-         0.1164704425837  -0.1164704425837
-        -0.2369240462328   0.2369240462328
-         0.8877975346075  -0.8877975346075
-         0.0               0.0
-        -2.7801417370539   2.7801417370539
-         0.0300908747326  -0.0300908747326
-         0.2699556041133  -0.2699556041133
-        -0.0204483936094   0.0204483936094
-         0.7680498069416  -0.7680498069416
-        -2.3138392185418   2.3138392185418
-         0.0773671336178  -0.0773671336178
-         0.3487030036407  -0.3487030036407
-         0.2551103361614  -0.2551103361614
+        -1.5304460868698  -0.9331775615929  -2.8450731468119   0.5745765095031  -1.526391759546  -2.0760364545872  -2.3522619060766   0.1164704425837  -0.2369240462328   0.8877975346075  0.0  -2.7801417370539   0.0300908747326   0.2699556041133  -0.0204483936094   0.7680498069416  -2.3138392185418   0.0773671336178   0.3487030036407   0.2551103361614
+        1.5304460868698   0.9331775615929   2.8450731468119  -0.5745765095031   1.526391759546   2.0760364545872   2.3522619060766  -0.1164704425837   0.2369240462328  -0.8877975346075  0.0   2.7801417370539  -0.0300908747326  -0.2699556041133   0.0204483936094  -0.7680498069416   2.3138392185418  -0.0773671336178  -0.3487030036407  -0.2551103361614
    ]
 
-    de = Cell.find_markers(X, lbls, method=:t)
-    @test de[!,:score] ≈ vec(true_scores) # assumes 'de' is sorted by [group, marker]
+    de = find_markers(X, lbls, method=:t)
+    @test de[!,:score] ≈ vec(true_scores) # assumes 'de' is sorted by [feature,group]
+
+    @test de == find_markers(X, lbls, method=:t, selection=trues(size(sel)))
+
+    de = find_markers(X, lbls, method=:t, selection=sel)
+    vs = vec(sel)
+    @test de[!,:score] ≈ vec(true_scores)[vs] # assumes 'de' is sorted by [feature,group]
+    @test de[!,:feature] == repeat(names(X,2), inner=2)[vs] # assumes 'de' is sorted by [feature,group]
+    @test de[!,:group] == repeat([1,2], outer=size(true_scores,2))[vs] # assumes 'de' is sorted by [feature,group]
 end
 
 @testset "wilcoxon" begin
@@ -72,6 +64,14 @@ end
     ]
 
     de = Cell.find_markers(X, lbls, method=:wilcoxon)
-    @test de[!,:pval] ≈ repeat(true_pvals, outer=2) # assumes 'de' is sorted by [group, marker]
+    @test de[!,:pval] ≈ repeat(true_pvals, inner=2) # assumes 'de' is sorted by [feature,group]
+
+    @test de == find_markers(X, lbls, method=:wilcoxon, selection=trues(size(sel)))
+
+    de = find_markers(X, lbls, method=:wilcoxon, selection=sel)
+    vs = vec(sel)
+    @test de[!,:pval] ≈ repeat(true_pvals, inner=2)[vs] # assumes 'de' is sorted by [feature,group]
+    @test de[!,:feature] == repeat(names(X,2), inner=2)[vs] # assumes 'de' is sorted by [feature,group]
+    @test de[!,:group] == repeat([1,2], outer=length(true_pvals))[vs] # assumes 'de' is sorted by [feature,group]
 end
 
