@@ -243,7 +243,7 @@ dimnames(C::NamedCenteredMatrix) = dimnames(C.A)
 dimnames(C::NamedCenteredMatrix, d::Integer) = dimnames(C.A, d)
 
 """
-    scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf)
+    scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf)
 
 Scale and center a count/data matrix along the cells such that each feature is standardized
 
@@ -256,7 +256,7 @@ Scale and center a count/data matrix along the cells such that each feature is s
 
 A centered matrix
 """
-function scale(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf) where T
+function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf) where T
     scale_max = convert(Float64, scale_max)
     B, mu = scale_data(X.array; scale_max=scale_max)
     CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))

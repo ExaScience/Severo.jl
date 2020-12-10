@@ -111,7 +111,7 @@ find_variable_features
 
 ### Scaling
 
-Prior to dimensional reduction techniques like PCA, it's a good idea to `scale` the data. Scaling performs two basic operations:
+Prior to dimensional reduction techniques like PCA, it's a good idea to `scale_features` the data. Scaling performs two basic operations:
 
 - Shifts the expression of each gene, so that the mean expression across cells is 0
 - Scales the expression of each gene, so that the standard deviation across cells is 1. This step gives equal weight in downstream analyses, so that highly-expressed genes do not dominate
@@ -119,11 +119,11 @@ Prior to dimensional reduction techniques like PCA, it's a good idea to `scale` 
 
 ```@example pbmc
 Y = Y[:,hvf] # only use highly-variable features
-S = scale(Y; scale_max=10)
+S = scale_features(Y; scale_max=10)
 ```
 
 ```@docs
-scale
+scale_features
 ```
 
 ### Principal component analysis
