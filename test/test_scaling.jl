@@ -18,14 +18,13 @@ import Statistics
     ])
     C = convert_counts(X)
 
-    S, mu = scale_features(C)
+    S = scale_features(C)
     @test names(S,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-6", "cell-7", "cell-8", "cell-9", "cell-10"]
     @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
-    @test names(mu,1) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
 
     X_mu, X_std = Cell.mean_std(X)
-    @test (X_mu ./ X_std) ≈ mu
-    @test Matrix((X .- X_mu') ./ X_std') ≈ Matrix(S .- mu')
+    @test (X_mu ./ X_std) ≈ S.mu
+    @test Matrix((X .- X_mu') ./ X_std') ≈ convert(Matrix, S)
 end
 
 @testset "centered matrix" begin
