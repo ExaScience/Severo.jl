@@ -190,8 +190,21 @@ dx = filter_rank_markers(dx)
 dx[1:10, :]
 ```
 
+Performance can be improved by first filtering the features based on the percentage of cells and the fold-change between the groups.
+
+```@example pbmc
+# filtering and DE on the lognormalized data
+sel = prefilter_markers(Y, lbls, logfc_threshold=0.25, min_pct=0.1, log=true, only_pos=true)
+dx = find_markers(Y, lbls; method=:t, log=true, selection=sel) # t-test
+dx = filter_rank_markers(dx)
+dx[1:10, :]
+```
+
+
 ```@docs
 find_markers
+filter_rank_markers
+prefilter_markers
 ```
 
 ```@example pbmc

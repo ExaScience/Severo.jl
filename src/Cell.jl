@@ -46,5 +46,5 @@ export convert_counts, filter_counts, filter_features, filter_cells, dataset
 export normalize, scale_features, find_variable_features
 export embedding, pca, umap
 export nearest_neighbours, shared_nearest_neighbours, jaccard_index
-export cluster, find_markers, filter_rank_markers
+export cluster, prefilter_markers, find_markers, filter_rank_markers
 end # module

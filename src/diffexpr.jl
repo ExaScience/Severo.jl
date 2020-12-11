@@ -100,8 +100,8 @@ function log_means_exp(x::SparseVec, lbls::AbstractVector{<:Integer}, nlabels::I
 end
 
 """
-    filter_features(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer};
-            logfc_threshold::Float64=0.0, min_pct::Float64=0.0, min_diff_pct::Float64=-Inf)
+    prefilter_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer};
+            logfc_threshold::Real=0.0, min_pct::Real=0.0, min_diff_pct::Real=-Inf, only_pos:Bool=false, log::Bool=false)
 
 Filter features for each of the classes in a dataset.
 
@@ -109,16 +109,18 @@ Filter features for each of the classes in a dataset.
 
     -`X`: count or data matrix
     -`idents`: class identity for each cell
-    -`logfc_threshold`: Limit testing to genes which show, on average, at least X-fold difference (log-scale) between the two groups of cells
-    -`min_pct`: only test genes that are detected in a minimum fraction of min.pct cells in either of the two populations
-    -`min_diff_pct`: only test genes that show a minimum difference in the fraction of detection between the two groups.
+    -`logfc_threshold`: Limit testing to features which show, on average, at least X-fold difference (log-scale) between the two groups of cells
+    -`min_pct`: only test features that are detected in a minimum fraction of `min_pct` cells in either of the two populations
+    -`min_diff_pct`: only test features that show a minimum difference in the fraction of detection between the two groups.
+    -`only_pos`: only return features with positive log fold-change
+    -`log`: the data is in log-scale (default = false)
 
 **Return values**:
 
 Selection matrix for each feature and class
 """
-function filter_features(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}, nlabels::Int64=count_labels(idents);
-        logfc_threshold::Float64=0.25, min_pct::Float64=0.1, min_diff_pct::Float64=-Inf, log::Bool=false)
+function prefilter_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}, nlabels::Int64=count_labels(idents);
+        logfc_threshold::Real=0.25, min_pct::Real=0.1, min_diff_pct::Real=-Inf, only_pos::Bool=false, log::Bool=false)
     @assert ! isa(X, NamedCountMatrix) || !log "strange combination of count data and log"
 
     ncells, nfeatures = size(X)
@@ -155,7 +157,12 @@ function filter_features(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Na
         any(selected[:,i]) || continue
 
         mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
-        selected[:,i] .&= abs.(mu1 .- mu2) .> logfc_threshold
+
+        selected[:,i] .&= if only_pos
+            abs.(mu1 .- mu2) .> logfc_threshold
+        else
+            (mu1 .- mu2) .> logfc_threshold
+        end
     end
 
     label_names = map(string, 1:nlabels)
@@ -164,7 +171,8 @@ function filter_features(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Na
 end
 
 """
-    find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}; method=:wilcoxon, kw...)
+    find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer};
+        method=:wilcoxon, selection::Union{Nothing, NamedArray{Bool, 2}, AbstractArray{Bool,2}}=nothing, log::Bool=false, kw...)
 
 Finds markers (differentially expressed genes) for each of the classes in a dataset.
 
@@ -172,7 +180,9 @@ Finds markers (differentially expressed genes) for each of the classes in a data
 
     -`X`: count or data matrix
     -`idents`: class identity for each cell
-    -`method`: Which test to use, supported are: [wilcoxon]
+    -`method`: Which test to use, supported are: [wilcoxon, t]
+    -`selection`: a selection of features and groups that should be considered
+    -`log`: the data is in log-scale (default = false)
     -`kw...`: additional parameters passed down to the method
 
 **Return values**:
