@@ -2,7 +2,7 @@ import CSV
 import DataFrames: DataFrame
 import GZip
 import HDF5
-import HDF5: h5open, attrs, exists, filename
+import HDF5: h5open, attributes, haskey, filename
 import SparseArrays: nonzeros, rowvals, getcolptr
 
 struct MMParseError <: Exception
@@ -150,13 +150,13 @@ end
 
 function _read_10X_h5(fname::String, dataset::String="/mm10")
     h5open(fname, "r") do f
-        feature_slot = if !exists(attrs(f), "PYTABLES_FORMAT_VERSION")
+        feature_slot = if !haskey(attributes(f), "PYTABLES_FORMAT_VERSION")
             "/features/name"
         else
             "/gene_names"
         end
 
-        if ! exists(f, dataset)
+        if ! haskey(f, dataset)
             throw(ParseError_10X("Dataset $dataset does not exist in $fname"))
         end
 
@@ -223,7 +223,7 @@ end
 
 function _read_h5(fname::AbstractString, dataset::AbstractString="/counts")
     h5open(fname, "r") do f
-        if ! exists(f, dataset)
+        if ! haskey(f, dataset)
             throw(ArgumentError("Dataset $dataset does not exist in $fname"))
         end
 
@@ -243,7 +243,7 @@ struct ParseError_H5AD <: Exception
 end
 
 function read_h5ad_attr(attrs::HDF5.Attributes, desc::String, names::Vector{String})
-    idx =  findfirst(x -> exists(attrs, x), names)
+    idx =  findfirst(x -> haskey(attrs, x), names)
 
     if idx === nothing
         throw(ArgumentError("Cannot read $desc information for count matrix in $(filename(attrs.parent))"))
@@ -254,11 +254,11 @@ end
 
 function _read_h5ad(fname::AbstractString)
     h5open(fname, "r") do f
-        if ! exists(f, "X")
+        if ! haskey(f, "X")
             throw(ArgumentError("Count data not found in $fname"))
         end
 
-        a = attrs(f["X"])
+        a = attributes(f["X"])
         dim = read_h5ad_attr(a, "shape", ["shape", "h5sparse_shape"])
         format = read_h5ad_attr(a, "format", ["encoding-type", "h5sparse_format"])
 
@@ -347,7 +347,7 @@ function jl_to_hdf5(data::AbstractArray{<:NamedTuple}, i)
     end
 end
 
-function HDF5.write(parent::Union{HDF5.HDF5File, HDF5.HDF5Group}, name::String, data::AbstractArray{N}, plists::HDF5.HDF5Properties...) where {N<:NamedTuple}
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::String, data::AbstractArray{N}, plists::HDF5.Properties...) where {N<:NamedTuple}
     dtype = _datatype(N)
     dspace = HDF5.dataspace(data)
 
@@ -391,7 +391,7 @@ function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
             write(f, "X/indices", rowvals(x) .- 1)
             write(f, "X/data", nonzeros(x))
 
-            a = attrs(f["X"])
+            a = attributes(f["X"])
             a["encoding-type"] = "csc_matrix"
             a["shape"] = collect(size(x))
 
