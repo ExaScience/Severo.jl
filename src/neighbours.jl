@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: sparse, nonzeros, droptol!, diag
 
 function ann(X, k; ntables=2*size(X,2))

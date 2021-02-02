@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import Loess: loess, predict
 import Statistics: var, mean
 import Distributions: quantile, Normal

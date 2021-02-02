@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import DataFrames: DataFrame, sort!, select!, groupby, combine, Not
 import SparseArrays: nonzeros, nonzeroinds
 import Distributions: TDist

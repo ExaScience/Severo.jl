@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import Plots: plot, scatter, stroke, title!
 import StatsPlots: boxplot, violin, violin!, dotplot!
 

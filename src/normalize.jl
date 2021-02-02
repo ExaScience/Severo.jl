@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 
 function row_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: Integer}

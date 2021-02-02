@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 function filter_features(A::CountMatrix; min_cells=0)
     cells_per_feature = vec(sum(A .> 0, dims=1))
     FI = (cells_per_feature .>= min_cells)

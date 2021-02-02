@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 import Distributions: cdf, ccdf, Normal
 

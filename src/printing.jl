@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 function show(io::IO, em::LinearEmbedding; dims::AbstractVector{<:Integer}=1:5, nfeatures::Integer=20)
     loadings = em.basis
     for dim in dims

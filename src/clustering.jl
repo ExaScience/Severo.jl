@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseMatrixCSC, nonzeros, getcolptr, rowvals, nnz
 
 include("modularity.jl")

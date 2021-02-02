@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import HTTP
 import GZip
 import Tar

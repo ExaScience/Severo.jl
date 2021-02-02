@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import Random: AbstractRNG, default_rng, randn
 import LinearAlgebra: mul!, SVD
 

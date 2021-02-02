@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import CSV
 import DataFrames: DataFrame
 import GZip

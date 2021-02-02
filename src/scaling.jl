@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, Adjoint, nonzeros, nonzeroinds, nnz, nzrange
 
 function mean_var(x::Union{SparseColumnView,SparseVector})

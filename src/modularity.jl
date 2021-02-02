@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseMatrixCSC, rowvals, nzrange, nonzeros, nnz
 import Random: shuffle, default_rng, AbstractRNG
 

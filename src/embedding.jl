@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import Arpack: svds
 import LinearAlgebra: svd, Diagonal
 import UMAP

@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import Statistics: quantile
 
 function make_unique!(out::AbstractVector{T}, names::AbstractVector{T}, sep::AbstractString=".") where {T <: AbstractString}

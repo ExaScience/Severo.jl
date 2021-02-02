@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 using Cell, Test
 import SparseArrays: SparseMatrixCSC
 import NamedArrays: NamedArray

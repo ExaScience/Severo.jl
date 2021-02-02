@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 using BenchmarkTools
 import StatsBase: sample
 import Statistics: mean, std

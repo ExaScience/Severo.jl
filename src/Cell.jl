@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 __precompile__()
 
 module Cell

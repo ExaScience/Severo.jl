@@ -1,3 +1,5 @@
+# copyright imec - evaluation license - not for distribution
+
 import SparseArrays: SparseMatrixCSC, getcolptr, nonzeros, rowvals
 import HDF5: h5read, h5write
 import Printf: @sprintf
