@@ -107,7 +107,7 @@ A k-nearest neighbours graph represented by a sparse matrix
 nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neighbours(em.coordinates, k, dims; kw...)
 
 """
-    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; ntables::Int64=2*size(X,2)) where T
+    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims=:; ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell and its Jaccard index.\\
 The Jaccard index measures similarity between nearest neighbour sets, and is defined as
@@ -129,7 +129,7 @@ the neighbourhoods of the cells as computed with the Jaccard index.
 function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2), prune=1/15) where T
     nn = nearest_neighbours(X.array[:,dims], k; ntables=ntables)
     snn = jaccard_index(nn, k; prune=prune)
-    NamedArray(snn, (X.dicts[1], X.dicts[1]), (nn.dimnames[1], nn.dimnames[1]))
+    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
 function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntables::Int64=2*size(X,2), prune=1/15) where T
@@ -138,4 +138,4 @@ function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; ntab
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
-shared_nearest_neighbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neighbours(em.coordinates, k; kw...)
+shared_nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = shared_nearest_neighbours(em.coordinates, k, dims; kw...)
