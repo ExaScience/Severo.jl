@@ -63,7 +63,9 @@ end
 
 UMAP.knn_search(X::AbstractMatrix, k, ::Val{:ann}) = ann(X, k)
 
-umap(X::LinearEmbedding, ncomponents::Int64=2; kw...) = umap(X.coordinates, ncomponents; kw...)
+umap(X::LinearEmbedding, ncomponents::Int64=2,; dims=:, kw...) = _umap(X, ncomponents, dims; kw...)
+_umap(X::LinearEmbedding, ncomponents::Int64, ::Colon; kw...) = umap(X.coordinates, ncomponents; kw...)
+_umap(X::LinearEmbedding, ncomponents::Int64, dims; kw...) = umap(view(X.coordinates,:,dims), ncomponents; kw...)
 
 function umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Integer=300, kw...)
     metric = if metric == :cosine
