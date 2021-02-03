@@ -225,23 +225,6 @@ function reduced_network(clustering::Clustering)
 	Network(nodes, edges, totw, tot_self)
 end
 
-function _findmax(f, itr)
-	r = iterate(itr)
-	r === nothing && error("empty collection")
-	m, state = r
-	f_m = f(m)
-	while true
-		r = iterate(itr, state)
-		r === nothing && break
-		x, state = r
-		f_x = f(x)
-		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
-			m, f_m = x, f_x
-		end
-	end
-	(f_m, m)
-end
-
 function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
 	isempty(neighbourcls) && return (0.0, ci)
 

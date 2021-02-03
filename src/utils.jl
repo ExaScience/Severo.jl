@@ -161,3 +161,22 @@ function tiedrank(x::AbstractVector)
 
 	rk
 end
+
+import Base: findmax
+function findmax(f, itr)
+	r = iterate(itr)
+	r === nothing && error("empty collection")
+	m, state = r
+	f_m = f(m)
+	while true
+		r = iterate(itr, state)
+		r === nothing && break
+		x, state = r
+		f_x = f(x)
+		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
+			m, f_m = x, f_x
+		end
+	end
+	(f_m, m)
+end
+

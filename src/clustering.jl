@@ -1,6 +1,7 @@
 # copyright imec - evaluation license - not for distribution
 
 import SparseArrays: SparseMatrixCSC, nonzeros, getcolptr, rowvals, nnz
+import StatsBase
 
 include("modularity.jl")
 
@@ -55,3 +56,27 @@ function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrando
     NamedArray(assignment, (SNN.dicts[1],), (:cells,))
 end
 
+function group_singletons!(lbls::NamedVector{T}, SNN::NeighbourGraph; min_count::Int=1) where {T <: Integer}
+    @assert length(lbls) == size(SNN,1)
+    snn = SNN.array
+
+    c = StatsBase.counts(lbls)
+    singletons = Set(findall(c .<= min_count))
+    others = findall(c .> min_count)
+
+    singles = findall(in(singletons), lbls)
+    for j in singles
+        val, closest = findmax(others) do cl
+            nzv = nonzeros(snn)
+            rv = rowvals(snn)
+            neighbours = findall(idx -> lbls[rv[idx]] == cl, nzrange(snn, j))
+            mean(nzv[neighbours]) # XXX does not make sense to me
+        end
+
+        lbls[j] = closest
+    end
+
+    lbls
+end
+
+group_singletons(lbls::NamedVector{T}, SNN::NeighbourGraph; min_count::Int=1) where {T <: Integer} = group_singletons!(copy(lbls), SNN; min_count=min_count)
