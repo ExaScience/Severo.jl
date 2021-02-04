@@ -79,7 +79,7 @@ Compute a k-nearest neighbours graph based on coordinates for each cell.
 A k-nearest neighbours graph represented by a sparse matrix
 """
 function nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2)) where T
-    nn = nearest_neighbours(X.array[:,dims], k; ntables=ntables)
+    nn = nearest_neighbours(view(X.array,:,dims), k; ntables=ntables)
     NamedArray(nn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
@@ -127,7 +127,7 @@ A shared nearest neighbours graph represented by a sparse matrix. Weights of the
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
 function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neighbours(X.array[:,dims], k; ntables=ntables)
+    nn = nearest_neighbours(view(X.array, :,dims), k; ntables=ntables)
     snn = jaccard_index(nn, k; prune=prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
