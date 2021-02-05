@@ -32,12 +32,13 @@ Cluster cells based on a neighbourhood graph.
     - `resolution`: parameters above 1 will lead to larger communities whereas below 1 lead to smaller ones
     - `nstarts`: number of random starts
     - `niterations`: maximum number of iterations per random start
+    - `group_singletons`: group singletons into nearest cluster, if false keeps singletons
 
 **Return values**:
 
 cluster assignment per cell
 """
-function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false)
+function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true)
     if isa(algorithm, AbstractString)
         algorithm = Symbol(algorithm)
     end
@@ -51,6 +52,10 @@ function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrando
         cl.nodecluster
     else
         error("unknown clustering algorithm: $algorithm")
+    end
+
+    if group_singletons
+        group_singletons!(assignment, SNN)
     end
 
     NamedArray(assignment, (SNN.dicts[1],), (:cells,))
