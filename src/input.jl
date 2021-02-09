@@ -5,7 +5,7 @@ import DataFrames: DataFrame
 import GZip
 import HDF5
 import HDF5: h5open, attributes, haskey, filename
-import SparseArrays: nonzeros, rowvals, getcolptr
+import SparseArrays: nonzeros, rowvals, getcolptr, sparse
 
 struct MMParseError <: Exception
     msg::AbstractString
@@ -207,9 +207,6 @@ function _readlines(fname::AbstractString)
     finally
         close(io)
     end
-end
-
-function _read_10X(dirname::AbstractString, gene_column::Int64=2)
 end
 
 function _read_10X(matrix_file::AbstractString, barcodes_file::AbstractString, feature_file::AbstractString, gene_column::Int64=2)
@@ -448,6 +445,62 @@ function _read_csv(fname::AbstractString)
     copy(X'), features, barcodes
 end
 
+function _read_loom(fname::AbstractString, barcode_names::AbstractString, feature_names::AbstractString)
+    h5open(fname, "r") do f
+        haskey(f, "matrix") || throw(ArgumentError("matrix not found in $fname"))
+        haskey(f, "col_attrs") || throw(ArgumentError("col_attrs not found in $fname"))
+        haskey(f, "row_attrs") || throw(ArgumentError("row_attrs not found in $fname"))
+
+        try
+            X = read(f, "matrix")
+            X = sparse(X)
+
+            ca = f["col_attrs"]
+            barcodes = read(ca, barcode_names)
+            @assert length(barcodes) == size(X,1)
+
+            ra = f["row_attrs"]
+            features = read(ra, feature_names)
+            @assert length(features) == size(X,2)
+
+            X, features, barcodes
+        catch e
+            if isa(e, ErrorException) # probably HDF5 error
+                throw(ParseError_H5AD("Failed to load dataset $fname: $(e.msg)"))
+            else
+                rethrow(e)
+            end
+        end
+    end
+end
+
+"""
+    read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true)
+
+Read count matrix from [loom format](http://linnarssonlab.org/loompy/format/)
+
+**Arguments**:
+
+- `fname`: path to loom file
+- `barcode_names`: key where the observation/cell names are stored.
+- `feature_names`: key where the variable/feature names are stored.
+- `unique_names`: should feature and barcode names be made unique (default: true)
+
+**Returns values**:
+
+Returns labeled sparse matrix containing the counts
+"""
+function read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true)
+    X, features, barcodes = _read_loom(fname, barcode_names, feature_names)
+
+    if unique_names
+        make_unique!(features, features)
+        make_unique!(barcodes, barcodes)
+    end
+
+    convert_counts(X, features, barcodes, unique_features=false)
+end
+
 """
     read_csv(dirname::AbstractString; unique_features=true)
 
@@ -610,6 +663,8 @@ function read_data(path::AbstractString; kw...)
     else
         if endswith(path, ".h5ad")
             read_h5ad
+        elseif endswith(path, ".loom")
+            read_loom
         elseif endswith(path, ".h5")
             read_10X_h5
         elseif endswith(path, ".csv")
