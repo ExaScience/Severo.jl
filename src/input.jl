@@ -296,7 +296,7 @@ end
 _keys(::Type{NamedTuple{names, types}}) where {names, types<:Tuple} = names
 
 function _datatype(N::Type{<:NamedTuple})
-    strtype = HDF5.HDF5Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
+    strtype = HDF5.Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
     HDF5.h5t_set_cset(strtype, HDF5.H5T_CSET_UTF8)
     HDF5.h5t_set_size(strtype, HDF5.HDF5.H5T_VARIABLE)
 
@@ -327,7 +327,7 @@ function _datatype(N::Type{<:NamedTuple})
         HDF5.h5t_insert(dtype, String(names[i]), offset, data_type)
         offset += sizeof(data_type)
     end
-    HDF5.HDF5Datatype(dtype)
+    HDF5.Datatype(dtype)
 end
 
 function jl_to_hdf5(data::AbstractArray{<:NamedTuple}, i)
@@ -353,7 +353,7 @@ function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::String, data::Ab
     dtype = _datatype(N)
     dspace = HDF5.dataspace(data)
 
-    strtype = HDF5.HDF5Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
+    strtype = HDF5.Datatype(HDF5.h5t_copy(HDF5.H5T_C_S1))
     HDF5.h5t_set_cset(strtype, HDF5.H5T_CSET_UTF8)
     HDF5.h5t_set_size(strtype, HDF5.HDF5.H5T_VARIABLE)
 
