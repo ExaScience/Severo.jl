@@ -150,7 +150,7 @@ struct ParseError_10X <: Exception
     msg::AbstractString
 end
 
-function _read_10X_h5(fname::String, dataset::String="/mm10")
+function _read_10X_h5(fname::AbstractString, dataset::AbstractString="/mm10")
     h5open(fname, "r") do f
         feature_slot = if !haskey(attributes(f), "PYTABLES_FORMAT_VERSION")
             "/features/name"
@@ -414,7 +414,7 @@ function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
     end
 end
 
-function _read_csv(fname::AbstractString; unique_features::Bool=true)
+function _read_csv(fname::AbstractString)
     X = readDelim(fname)
     barcodes = names(X)[2:end]
     features = X[:,1]
@@ -515,7 +515,7 @@ function read_10X(dirname::AbstractString; gene_column::Int64=2, unique_features
 end
 
 """
-    read_10X_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+    read_10X_h5(fname::AbstractString; dataset::AbstractString="/mm10", unique_features=true)
 
 Read count matrix from 10X CellRanger hdf5 file.
 
@@ -529,7 +529,7 @@ Read count matrix from 10X CellRanger hdf5 file.
 
 Returns labeled sparse matrix containing the counts
 """
-function read_10X_h5(fname::String, dataset::String="/mm10"; unique_features::Bool=true)
+function read_10X_h5(fname::AbstractString; dataset::AbstractString="/mm10", unique_features::Bool=true)
     X, features, barcodes = _read_10X_h5(fname, dataset)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
@@ -547,7 +547,7 @@ function read_geo(prefix::AbstractString; gene_column::Int64=2, unique_features:
 end
 
 """
-    read_h5(fname::String, dataset::String="/mm10"; unique_features=true)
+    read_h5(fname::AbstractString; dataset::AbstractString="/mm10", unique_features=true)
 
 Read count matrix from hdf5 file.
 
@@ -561,7 +561,7 @@ Read count matrix from hdf5 file.
 
 Returns labeled sparse matrix containing the counts
 """
-function read_h5(fname::AbstractString, dataset::AbstractString="/counts"; unique_features::Bool=true)
+function read_h5(fname::AbstractString; dataset::AbstractString="/counts", unique_features::Bool=true)
     X, features, barcodes = _read_h5(fname, dataset)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
@@ -587,20 +587,20 @@ function read_h5ad(fname::AbstractString; unique_features::Bool=true)
 end
 
 """
-    read_data(path::AbstractString; unique_features=true)
+    read_data(path::AbstractString; kw...)
 
 Tries to identify and read a count matrix in any of the supported formats
 
 **Arguments**:
 
 - `fname`: path
-- `unique_features`: should feature names be made unique (default: true)
+- `kw`: additional keyword arguments are passed on
 
 **Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
-function read_data(path::AbstractString; unique_features::Bool=true)
+function read_data(path::AbstractString; kw...)
     if !ispath(path)
         error("path $path does not point to anything")
     end
@@ -621,7 +621,7 @@ function read_data(path::AbstractString; unique_features::Bool=true)
         end
     end
 
-    f(path; unique_features=unique_features)
+    f(path; kw...)
 end
 
 """

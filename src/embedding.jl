@@ -76,7 +76,7 @@ function umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbou
         metric
     end
 
-    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs)'
+    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs, kw...)'
 end
 
 function umap(X::NamedMatrix, ncomponents::Int64=2; kw...)
