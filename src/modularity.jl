@@ -229,7 +229,7 @@ function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector
 	isempty(neighbourcls) && return (0.0, ci)
 
 	@inbounds init = kin[ci] - clustering.resolution * (clustering.w_tot[ci]*ki)/totw
-	(delta, idx) = _findmax(neighbourcls) do neighbour_cluster
+	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
 		@inbounds kin[neighbour_cluster] - clustering.resolution * (clustering.w_tot[neighbour_cluster]*ki)/totw
 	end
 
