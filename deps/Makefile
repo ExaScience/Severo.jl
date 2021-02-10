@@ -22,8 +22,9 @@ endif
 #LAPACK_FLAGS=-L/opt/software/OpenBLAS/0.3.7-GCC-8.3.0/lib -lopenblas -Wl,-rpath=/opt/software/OpenBLAS/0.3.7-GCC-8.3.0/lib
 LAPACK_FLAGS=-llapack -lblas
 
-CFLAGS=-DHAVE_F77_UNDERSCORE -O3 -march=native -fPIC
-CXXFLAGS=-O3 -march=native -fPIC
+LDFLAGS=-fopenmp
+CFLAGS=-DHAVE_F77_UNDERSCORE -O3 -march=native -fPIC -fopenmp
+CXXFLAGS=-O3 -march=native -fPIC -fopenmp
 
 OBJECTS=neighbours.o clustering.o ModularityOptimizer.o irlba.o
 
@@ -34,7 +35,7 @@ OBJECTS=neighbours.o clustering.o ModularityOptimizer.o irlba.o
 	$(CC) -Wall -ansi -std=gnu99 -c $(CFLAGS) $(INCPATH) -o $@ $<
 
 all: $(OBJECTS)
-	$(LD) -shared $(OBJECTS) $(LAPACK_FLAGS) -o libcell.$(SLIB)
+	$(LD) -shared $(OBJECTS) $(LDFLAGS) $(LAPACK_FLAGS) -o libcell.$(SLIB)
 
 clean:
 	rm $(OBJECTS) libcell.$(SLIB)
