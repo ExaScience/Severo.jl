@@ -8,7 +8,7 @@
 
 // y = A*x if trans = 'N' or y = A'x if trans = 'T', temp is an n vector
 typedef void (*matmul_t)(double *y, char trans, double * x, double *temp, void *data);
-typedef void (*randn_t)(double *y, int n, void *data);
+typedef void (*randn_t)(double *y, blas_int n, void *data);
 
 /* orthog(X,Y,...)
  * compute Y = Y - X * t(X) * Y
@@ -18,9 +18,9 @@ typedef void (*randn_t)(double *y, int n, void *data);
  * T must be allocated of at least size xn.
  * Modifies contents of Y.
  */
-void orthog(double *X, double *Y, double *T, int xm, int xn) {
+void orthog(double *X, double *Y, double *T, blas_int xm, blas_int xn) {
 	double a, b;
-	int inc = 1;
+	blas_int inc = 1;
 
 	// T = t(X) * Y
 	a = 1.0; b = 0.0;
@@ -31,7 +31,7 @@ void orthog(double *X, double *Y, double *T, int xm, int xn) {
 	F77_NAME(dgemv)("n", &xm, &xn, &a, X, &xm, T, &inc, &b, Y, &inc);
 }
 
-void ablanzbd(int j, int m, int n, int m_b, double SVTol,
+void ablanzbd(blas_int j, blas_int m, blas_int n, blas_int m_b, double SVTol,
 		double *B, // output (m_b x m_b)
 		double *V, // output (n x m_b)
 		double *W, // output (m x m_b)
@@ -40,7 +40,7 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 		randn_t randn, matmul_t matmul, void *data) {
 
 	double S, R, SS, RR;
-	int inc = 1;
+	blas_int inc = 1;
 
 	matmul(W + j * m, 'N', V + j * n, T, data);
 
@@ -103,8 +103,9 @@ void ablanzbd(int j, int m, int n, int m_b, double SVTol,
 	}
 }
 
-int convtest(int m_b, double *res, double *svratio, int n, double tol, double SVtol, int *k) {
-	int j, Len_res = 0, Len_res_sv = 0;
+int convtest(blas_int m_b, double *res, double *svratio, blas_int n, double tol, double SVtol, blas_int *k) {
+	blas_int j;
+	int Len_res = 0, Len_res_sv = 0;
 	int augment = 3;
 
 	for(j = 0; j < n; j++) {
@@ -132,8 +133,8 @@ static double eps() {
 	return nextafter(0.0, 1.0);
 }
 
-void print_matrix(double *A, int m, int n) {
-	int i, j;
+void print_matrix(double *A, blas_int m, blas_int n) {
+	blas_int i, j;
 	for(i = 0; i < m; i++) {
 		for(j = 0; j < n; j++)
 			printf("%f ", A[j*m + i]);
@@ -141,11 +142,11 @@ void print_matrix(double *A, int m, int n) {
 	}
 }
 
-int prep_svd(int m, int n, double *A, double *S, double *U, double *VT, int *iwork) {
-	int info;
-	int lwork = -1;
+blas_int prep_svd(blas_int m, blas_int n, double *A, double *S, double *U, double *VT, blas_int *iwork) {
+	blas_int info;
+	blas_int lwork = -1;
 	double work;
-	int mn = m < n ? m : n;
+	blas_int mn = m < n ? m : n;
 
 	F77_NAME(dgesdd)("O", &m, &n, A, &m, S, U, &m, VT, &n, &work, &lwork, iwork, &info);
 
@@ -156,15 +157,15 @@ int prep_svd(int m, int n, double *A, double *S, double *U, double *VT, int *iwo
 	}
 }
 
-int do_svd(int m, int n, double *A, double *S, double *U, double *VT,
-						 double *work, int lwork, int *iwork) {
-	int info;
+int do_svd(blas_int m, blas_int n, double *A, double *S, double *U, double *VT,
+						 double *work, blas_int lwork, blas_int *iwork) {
+	blas_int info;
 	F77_NAME(dlacpy)("N", &m, &n, A, &m, U, &m);
 	F77_NAME(dgesdd)("O", &m, &n, U, &m, S, U, &m, VT, &n, work, &lwork, iwork, &info);
 	return info;
 }
 
-int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
+blas_int irlba_(blas_int m, blas_int n, blas_int nu, blas_int m_b, blas_int maxit, blas_int restart,
 		double tol,
 		double *so, // output singular values
 		double *Uo, // output left singular vectors
@@ -180,13 +181,13 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 		double *U1, // work (m x m_b)
 		double *V1, // work (n x m_b)
 		double *work, // work (lwork)
-		int lwork,
-		int *iwork, // work (8 * m_b)
+		blas_int lwork,
+		blas_int *iwork, // work (8 * m_b)
 		randn_t randn, matmul_t matmul, void *data) {
 	int iter, i;
-	int info = 0;
-	int inc = 1;
-	int k = restart;
+	blas_int info = 0;
+	blas_int inc = 1;
+	blas_int k = restart;
 	double R, RR;
 	double alpha = 1.0, beta = 0.0;
 	double Smax = -INFINITY, Smin = INFINITY;
@@ -254,7 +255,7 @@ int irlba_(int m, int n, int nu, int m_b, int maxit, int restart,
 	return info;
 }
 
-int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
+blas_int irlba(blas_int m, blas_int n, blas_int nu, blas_int m_b, blas_int maxit, blas_int restart, double tol,
 		double *init, // input starting vector (n) (can be NULL)
 		double *so, // output singular values
 		double *Uo, // output left singular vectors
@@ -271,13 +272,13 @@ int irlba(int m, int n, int nu, int m_b, int maxit, int restart, double tol,
 	double *BV = malloc(m_b * m_b * sizeof(double));
 	double *U1 = malloc(m * m_b * sizeof(double));
 	double *V1 = malloc(n * m_b * sizeof(double));
-	int *iwork = malloc(8 * m_b * sizeof(int));
+	blas_int *iwork = malloc(8 * m_b * sizeof(blas_int));
 
-	int lwork = prep_svd(m_b, m_b, B, BS, BU, BV, iwork);
+	blas_int lwork = prep_svd(m_b, m_b, B, BS, BU, BV, iwork);
 	double *work = malloc(lwork * sizeof(double));
 
-	int inc = 1;
-	int info;
+	blas_int inc = 1;
+	blas_int info;
 	double S;
 	int i;
 
