@@ -445,15 +445,38 @@ function _read_csv(fname::AbstractString)
     copy(X'), features, barcodes
 end
 
-function _read_loom(fname::AbstractString, barcode_names::AbstractString, feature_names::AbstractString)
+# XXX should read the dataset in chunks, but HDF5.jl doesn't support that
+function read_sparse(X::HDF5.Dataset, blocksize::Tuple{Int,Int})
+    m,n = size(X)
+
+    rows = Int64[]
+    cols = Int64[]
+    vals = eltype(X)[]
+
+    @inbounds for r in 1:blocksize[1]:m, c in 1:blocksize[2]:n
+        re = min(r + blocksize[1] - 1, m)
+        ce = min(c + blocksize[2] - 1, n)
+
+        B = X[r:re, c:ce]
+        s = findall(!iszero, B)
+
+        append!(rows, map(x-> r + x[1] - 1, s))
+        append!(cols, map(x-> c + x[2] - 1, s))
+        append!(vals, B[s])
+
+    end
+
+    sparse(rows, cols, vals, m, n)
+end
+
+function _read_loom(fname::AbstractString, barcode_names::AbstractString, feature_names::AbstractString, blocksize::Tuple{Int,Int}=(100,100))
     h5open(fname, "r") do f
         haskey(f, "matrix") || throw(ArgumentError("matrix not found in $fname"))
         haskey(f, "col_attrs") || throw(ArgumentError("col_attrs not found in $fname"))
         haskey(f, "row_attrs") || throw(ArgumentError("row_attrs not found in $fname"))
 
         try
-            X = read(f, "matrix")
-            X = sparse(X)
+            X = read_sparse(f["matrix"], blocksize)
 
             ca = f["col_attrs"]
             barcodes = read(ca, barcode_names)
@@ -475,7 +498,7 @@ function _read_loom(fname::AbstractString, barcode_names::AbstractString, featur
 end
 
 """
-    read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true)
+    read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true, blocksize::Tuple{Int,Int}=(100,100))
 
 Read count matrix from [loom format](http://linnarssonlab.org/loompy/format/)
 
@@ -485,13 +508,14 @@ Read count matrix from [loom format](http://linnarssonlab.org/loompy/format/)
 - `barcode_names`: key where the observation/cell names are stored.
 - `feature_names`: key where the variable/feature names are stored.
 - `unique_names`: should feature and barcode names be made unique (default: true)
+- `blocksize`: blocksize to use when reading the matrix (tradeoff between memory and speed)
 
 **Returns values**:
 
 Returns labeled sparse matrix containing the counts
 """
-function read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true)
-    X, features, barcodes = _read_loom(fname, barcode_names, feature_names)
+function read_loom(fname::AbstractString; barcode_names::AbstractString="CellID", feature_names::AbstractString="Gene", unique_names::Bool=true, blocksize::Tuple{Int,Int}=(100,100))
+    X, features, barcodes = _read_loom(fname, barcode_names, feature_names, blocksize)
 
     if unique_names
         make_unique!(features, features)
