@@ -1,20 +1,52 @@
 # copyright imec - evaluation license - not for distribution
 
 using Libdl
+using LinearAlgebra
+
+function determine_flags()
+    # XXX assume BLAS and LAPACK have the same vendor
+    LDFLAGS = String[]
+    CFLAGS = String[]
+
+    if BLAS.BlasInt === Int64
+        push!(CFLAGS, "-DBLAS64")
+    end
+
+    if BLAS.determine_vendor() === :openblas64
+        push!(CFLAGS, "-DHAVE_OPENBLAS64")
+    else
+        push!(CFLAGS, "-DHAVE_F77_UNDERSCORE")
+    end
+
+    for libname in [BLAS.libblas, BLAS.liblapack]
+        lib = nothing
+        try
+            lib = Libdl.dlopen(libname)
+            libpath = dlpath(lib)
+            push!(LDFLAGS, libpath)
+        finally
+            Libdl.dlclose(lib)
+        end
+    end
+
+    join(unique(CFLAGS), " "), join(unique(LDFLAGS), " ")
+end
 
 function build()
+    cflags, ldflags = determine_flags()
+
     p = pwd()
     cd(dirname(@__FILE__))
     if Sys.iswindows()
         try
-            run(`mingw32-make`)
+            run(`mingw32-make LAPACK_CFLAGS="$cflags" LAPACK_LDFLAGS="$ldflags"`)
         catch
             error("failed to build using mingw32-make")
         end
     elseif Sys.isbsd() && !Sys.isapple()  # e.g. FreeBSD
-        run(`gmake`)
+        run(`gmake LAPACK_CFLAGS="$cflags" LAPACK_LDFLAGS="$ldflags"`)
     else
-        run(`make`)
+        run(`make LAPACK_CFLAGS="$cflags" LAPACK_LDFLAGS="$ldflags"`)
     end
     cd(p)
 end
@@ -28,6 +60,7 @@ end
 
 deps = quote
     const libcell = $libcell
+    const BlasInt = $(BLAS.BlasInt)
 end
 
 remove_line_numbers(x) = x

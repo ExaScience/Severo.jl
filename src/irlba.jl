@@ -25,7 +25,7 @@ function matmul(yptr::Ptr{Float64}, trans::Cchar, xptr::Ptr{Float64}, temp::Ptr{
 	nothing
 end
 
-function randv(yptr::Ptr{Float64}, n::Cint, data::IrlbaData)
+function randv(yptr::Ptr{Float64}, n::BlasInt, data::IrlbaData)
 	rng = data.rng
 	y = unsafe_wrap(Array, yptr, n)
 	y[:] = randn(rng, n)
@@ -52,7 +52,7 @@ function irlba!(rng::AbstractRNG, A::AbstractMatrix, U::Matrix, s::Vector, V::Ma
 	end
 
 	info = ccall(("irlba", libcell), Cint,
-		(Int64, Int64, Int64, Int64, Int64, Int64, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Cvoid}, Ptr{Cvoid}, Any),
+		(BlasInt, BlasInt, BlasInt, BlasInt, BlasInt, BlasInt, Float64, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Float64}, Ptr{Cvoid}, Ptr{Cvoid}, Any),
 		m, n, nu, m_b, maxit, restart, tol, init, s, U, V,
 		@cfunction(randv, Cvoid, (Ptr{Float64}, Cint, Ref{IrlbaData})),
 		@cfunction(matmul, Cvoid, (Ptr{Float64}, Cchar, Ptr{Float64}, Ptr{Float64}, Ref{IrlbaData})),
