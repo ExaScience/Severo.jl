@@ -55,15 +55,14 @@ function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrando
     end
 
     if group_singletons
-        group_singletons!(assignment, SNN)
+        group_singletons!(assignment, SNN.array)
     end
 
     NamedArray(assignment, (SNN.dicts[1],), (:cells,))
 end
 
-function group_singletons!(lbls::NamedVector{T}, SNN::NeighbourGraph; min_count::Int=1) where {T <: Integer}
-    @assert length(lbls) == size(SNN,1)
-    snn = SNN.array
+function group_singletons!(lbls::Vector{T}, snn::SparseMatrixCSC{R, Int64}; min_count::Int=1) where {T <: Integer, R <: Real}
+    @assert length(lbls) == size(snn,1)
 
     c = StatsBase.counts(lbls)
     singletons = Set(findall(c .<= min_count))
@@ -81,6 +80,11 @@ function group_singletons!(lbls::NamedVector{T}, SNN::NeighbourGraph; min_count:
         lbls[j] = closest
     end
 
+    lbls
+end
+
+function group_singletons!(lbls::NamedVector{T}, SNN::NeighbourGraph; min_count::Int=1) where {T <: Integer}
+    group_singletons!(lbls.array, SNN.array)
     lbls
 end
 
