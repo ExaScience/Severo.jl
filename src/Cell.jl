@@ -4,6 +4,10 @@ __precompile__()
 
 module Cell
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optlevel"))
+    @eval Base.Experimental.@optlevel 3
+end
+
 import SparseArrays: sparse, SparseMatrixCSC, SparseVector, SparseColumnView
 import NamedArrays: NamedArray, NamedMatrix, NamedVector, names, dimnames
 
