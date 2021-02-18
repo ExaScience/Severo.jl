@@ -61,18 +61,20 @@ public:
   }
 };
 
-using AnnoyIndexType = AnnoyIndex<int32_t, double, Euclidean, Kiss64Random, AnnoyIndexOMPBuildPolicy>;
+using BuildPolicy = AnnoyIndexOMPBuildPolicy;
 #else
-using AnnoyIndexType = AnnoyIndex<int32_t, double, Euclidean, Kiss64Random, AnnoyIndexSingleThreadedBuildPolicy>;
+using BuildPolicy = AnnoyIndexSingleThreadedBuildPolicy;
 #endif
 
-extern "C" void FindNeighbours(double *data, int n, int d, int k, int q, int *nn_index, double *distances) {
+template <typename D>
+void FindNeighbours(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
+	using AnnoyIndexType = AnnoyIndex<int32_t, double, D, Kiss64Random, BuildPolicy>;
 	AnnoyIndexType index(d);
 
 	std::vector<double> c(d);
 	for(int i = 0; i < n; ++i) {
 		for(int j = 0; j < d; ++j)
-			c[j] = data[i+j*n];
+			c[j] = data[i+j*stride];
 
 		char *errormsg;
 		if (!index.add_item(i, &c[0], &errormsg))
@@ -124,4 +126,12 @@ extern "C" void FindNeighbours(double *data, int n, int d, int k, int q, int *nn
 		}
 	}
 #endif
+}
+
+extern "C" void FindNeighboursEuclidian(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
+	FindNeighbours<Euclidean>(data, n, d, stride, k, q, nn_index, distances);
+}
+
+extern "C" void FindNeighboursCosine(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
+	FindNeighbours<Angular>(data, n, d, stride, k, q, nn_index, distances);
 }
