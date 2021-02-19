@@ -3,37 +3,37 @@
 import SparseArrays: sparse, nonzeros, droptol!, diag
 import Distances: SemiMetric, Euclidean, CosineDist
 
-function ann(X::AbstractMatrix{Float64}, k::Int64, metric::SemiMetric, ntables::Int64=2*size(X,2))
+function ann(X::AbstractMatrix{Float64}, k::Int64, metric::SemiMetric, include_self::Bool=true, ntables::Int64=2*size(X,2))
     n,d = size(X)
 
     nn_index = Matrix{Int32}(undef, n, k)
     distances = Matrix{Float64}(undef, n, k)
 
-    ann!(nn_index, distances, metric, X, k, ntables)
+    ann!(nn_index, distances, metric, X, k, include_self, ntables)
 end
 
-function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::Euclidean, X::StridedMatrix{Float64}, k::Int64, ntables::Int64)
+function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::Euclidean, X::StridedMatrix{Float64}, k::Int64, include_self::Bool, ntables::Int64)
     n,d = size(X)
     @assert stride(X,1) == 1
 
     ccall(("FindNeighboursEuclidian", libcell), Cvoid,
-        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
-        X, n, d, stride(X,2), k, ntables, nn_index, distances)
+        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
+        X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
     nn_index, distances
 end
 
-function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::CosineDist, X::StridedMatrix{Float64}, k::Int64, ntables::Int64)
+function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::CosineDist, X::StridedMatrix{Float64}, k::Int64, include_self::Bool, ntables::Int64)
     n,d = size(X)
     @assert stride(X,1) == 1
 
     ccall(("FindNeighboursCosine", libcell), Cvoid,
-        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
-        X, n, d, stride(X,2), k, ntables, nn_index, distances)
+        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
+        X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
     nn_index, distances
 end
 
-function nearest_neighbours(X::AbstractMatrix, k::Int64, metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2))
-    nn_index, distances = ann(X, k, metric, ntables)
+function nearest_neighbours(X::AbstractMatrix, k::Int64, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
+    nn_index, distances = ann(X, k, metric, include_self, ntables)
     sparse(repeat(1:size(nn_index,1),k), vec(nn_index), trues(length(nn_index)))
 end
 
@@ -81,7 +81,7 @@ function jaccard_index(nn::NamedArray{T,2}; prune::Real=1/15) where T
 end
 
 """
-    nearest_neighbours(X::NamedArray{T,2}, k::Int64; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2)) where T
+    nearest_neighbours(X::NamedArray{T,2}, k::Int64; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell.
 
@@ -91,24 +91,25 @@ Compute a k-nearest neighbours graph based on coordinates for each cell.
     - `k`: number of nearest neighbours to find
     - `dims`: which dimensions to use
     - `metric`: distance metric to use
+    - `include_self`: include the cell in its k-nearest neighbours
     - `ntables`: number of tables to use in knn algorithm: controls the precision (higher is more accurate)
 
 **Return values**:
 
 A k-nearest neighbours graph represented by a sparse matrix
 """
-function nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2)) where T
-    nn = nearest_neighbours(view(X.array,:,dims), k, metric, ntables)
+function nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
+    nn = nearest_neighbours(view(X.array,:,dims), k, metric, include_self, ntables)
     NamedArray(nn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
-function nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:;  metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2)) where T
-    nn = nearest_neighbours(X.array, k, metric, ntables)
+function nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:;  metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
+    nn = nearest_neighbours(X.array, k, metric, include_self, ntables)
     NamedArray(nn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
 """
-    nearest_neighbours(em::LinearEmbedding, k::Int64; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2)) where T
+    nearest_neighbours(em::LinearEmbedding, k::Int64; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on an embedding
 
@@ -118,6 +119,7 @@ Compute a k-nearest neighbours graph based on an embedding
     - `k`: number of nearest neighbours to find
     - `dims`: which dimensions to use
     - `metric`: distance metric to use
+    - `include_self`: include the cell in its k-nearest neighbours
     - `ntables`: number of tables to use in knn algorithm: controls the precision (higher is more accurate)
 
 **Return values**:
@@ -127,7 +129,7 @@ A k-nearest neighbours graph represented by a sparse matrix
 nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neighbours(em.coordinates, k, dims; kw...)
 
 """
-    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims=:; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2)) where T
+    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims=:; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell and its Jaccard index.\\
 The Jaccard index measures similarity between nearest neighbour sets, and is defined as
@@ -138,6 +140,7 @@ the size of the intersection divided by the size of the union. "0" indicating no
     - `X`: a labelled matrix with coordinates for each cell
     - `k`: number of nearest neighbours to find
     - `dims`: which dimensions to use
+    - `include_self`: include the cell in its k-nearest neighbours
     - `ntables`: number of tables to use in knn algorithm: controls the precision (higher is more accurate)
     - `prune`: cutoff for the Jaccard index, edges with values below this cutoff are removed from the resulting graph
 
@@ -146,14 +149,14 @@ the size of the intersection divided by the size of the union. "0" indicating no
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neighbours(view(X.array, :,dims), k, matric, ntables)
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(view(X.array, :,dims), k, matric, include_self, ntables)
     snn = jaccard_index(nn, k; prune=prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
-function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; metric::SemiMetric=Euclidean(), ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neighbours(X.array, k, metric, ntables)
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(X.array, k, metric, include_self, ntables)
     snn = jaccard_index(nn, k; prune=prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end

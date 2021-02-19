@@ -66,8 +66,19 @@ using BuildPolicy = AnnoyIndexOMPBuildPolicy;
 using BuildPolicy = AnnoyIndexSingleThreadedBuildPolicy;
 #endif
 
+struct CosineDist : Angular {
+  template<typename T>
+  static inline T normalized_distance(T distance) {
+    return std::max(distance/2.0, T(0));
+  }
+
+  static const char* name() {
+    return "cosinedist";
+  }
+};
+
 template <typename D>
-void FindNeighbours(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
+void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool include_self, int *nn_index, double *distances) {
 	using AnnoyIndexType = AnnoyIndex<int32_t, double, D, Kiss64Random, BuildPolicy>;
 	AnnoyIndexType index(d);
 
@@ -82,6 +93,9 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, int *n
 	}
 
 	index.build(q);
+
+	if(!include_self)
+		k = k + 1;
 
 #ifdef _OPENMP
 	#pragma omp parallel
@@ -99,10 +113,14 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, int *n
 
 			index.get_nns_by_item(i, k, -1, &nn_idx, &dists);
 
+			int idx = 0;
 			for(int j = 0; j < k; j++) {
-				int ptr = i + j*n;
+				if(!include_self && nn_idx[j] == i) continue;
+
+				int ptr = i + idx*n;
 				distances[ptr] = dists[j];
 				nn_index[ptr] = nn_idx[j] + 1;
+				idx++;
 			}
 		}
 	}
@@ -119,19 +137,23 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, int *n
 
 		index.get_nns_by_item(i, k, -1, &nn_idx, &dists);
 
+		int idx = 0;
 		for(int j = 0; j < k; j++) {
-			int ptr = i + j*n;
+			if(!include_self && nn_idx[j] == i) continue;
+
+			int ptr = i + idx*n;
 			distances[ptr] = dists[j];
 			nn_index[ptr] = nn_idx[j] + 1;
+			idx++;
 		}
 	}
 #endif
 }
 
-extern "C" void FindNeighboursEuclidian(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
-	FindNeighbours<Euclidean>(data, n, d, stride, k, q, nn_index, distances);
+extern "C" void FindNeighboursEuclidian(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
+	FindNeighbours<Euclidean>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
 }
 
-extern "C" void FindNeighboursCosine(double *data, int n, int d, int stride, int k, int q, int *nn_index, double *distances) {
-	FindNeighbours<Angular>(data, n, d, stride, k, q, nn_index, distances);
+extern "C" void FindNeighboursCosine(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
+	FindNeighbours<CosineDist>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
 }
