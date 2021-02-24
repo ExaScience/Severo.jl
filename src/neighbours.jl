@@ -109,7 +109,7 @@ function nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:;  metric::Se
 end
 
 """
-    nearest_neighbours(em::LinearEmbedding, k::Int64; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
+    nearest_neighbours(em::LinearEmbedding, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on an embedding
 
@@ -128,8 +128,20 @@ A k-nearest neighbours graph represented by a sparse matrix
 """
 nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neighbours(em.coordinates, k, dims; kw...)
 
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(view(X.array, :,dims), k, metric, include_self, ntables)
+    snn = jaccard_index(nn, k; prune=prune)
+    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
+end
+
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
+    nn = nearest_neighbours(X.array, k, metric, include_self, ntables)
+    snn = jaccard_index(nn, k; prune=prune)
+    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
+end
+
 """
-    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims=:; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
+    shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
 
 Compute a k-nearest neighbours graph based on coordinates for each cell and its Jaccard index.\\
 The Jaccard index measures similarity between nearest neighbour sets, and is defined as
@@ -149,16 +161,27 @@ the size of the intersection divided by the size of the union. "0" indicating no
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, dims; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neighbours(view(X.array, :,dims), k, matric, include_self, ntables)
-    snn = jaccard_index(nn, k; prune=prune)
-    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
-end
+shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, kw...) where T = shared_nearest_neighbours(X, k, dims; kw...)
 
-function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64, ::Colon=:; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = nearest_neighbours(X.array, k, metric, include_self, ntables)
-    snn = jaccard_index(nn, k; prune=prune)
-    NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
-end
+"""
+    shared_nearest_neighbours(em::LinearEmbedding, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
 
-shared_nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = shared_nearest_neighbours(em.coordinates, k, dims; kw...)
+Compute a k-nearest neighbours graph based on an embedding of cells and its Jaccard index.\\
+The Jaccard index measures similarity between nearest neighbour sets, and is defined as
+the size of the intersection divided by the size of the union. "0" indicating no overlap and "1" indicating full overlap.
+
+**Arguments**:
+
+    - `em`: embedding containing the transformed coordinates for each cell
+    - `k`: number of nearest neighbours to find
+    - `dims`: which dimensions to use
+    - `include_self`: include the cell in its k-nearest neighbours
+    - `ntables`: number of tables to use in knn algorithm: controls the precision (higher is more accurate)
+    - `prune`: cutoff for the Jaccard index, edges with values below this cutoff are removed from the resulting graph
+
+**Return values**:
+
+A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
+the neighbourhoods of the cells as computed with the Jaccard index.
+"""
+shared_nearest_neighbours(em::LinearEmbedding, k::Int64; dims=:, kw...) = shared_nearest_neighbours(em.coordinates, k, dims; kw...)
