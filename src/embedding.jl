@@ -61,11 +61,36 @@ function pca(X::Union{NamedMatrix, NamedCenteredMatrix}, npcs::Int64; kw...)
     LinearEmbedding(X, coordinates, stdev, basis)
 end
 
-UMAP.knn_search(X::AbstractMatrix, k, ::Val{:ann}) = ann(X, k)
+function UMAP.knn_search(X::AbstractMatrix, k, ::Val{:ann})
+    @time knns, dists = ann(X', k, CosineDist(), false)
+    knns', dists'
+end
 
-umap(X::LinearEmbedding, ncomponents::Int64=2,; dims=:, kw...) = _umap(X, ncomponents, dims; kw...)
-_umap(X::LinearEmbedding, ncomponents::Int64, ::Colon; kw...) = umap(X.coordinates, ncomponents; kw...)
-_umap(X::LinearEmbedding, ncomponents::Int64, dims; kw...) = umap(view(X.coordinates,:,dims), ncomponents; kw...)
+"""
+    umap(em::LinearEmbedding, ncomponents::Int64=2; dims=:, metric=:cosine, nneighbours::Int=30, min_dist::Real=.3, nepochs::Int=300, kw...) where T
+
+Performs a Uniform Manifold Approximation and Projection (UMAP) dimensional reduction on the coordinates in the linear embedding.
+
+For a more in depth discussion of the mathematics underlying UMAP, see the ArXiv paper: [https://arxiv.org/abs/1802.03426]
+
+**Arguments**:
+
+    - `em`: embedding containing the transformed coordinates for each cell
+    - `ncomponents`: the dimensionality of the embedding
+    - `dims`: which dimensions to use
+    - `metric`: distance metric to use
+    - `nneighbours`: the number of neighboring points used in local approximations of manifold structure.
+    - `min_dist`: controls how tightly the embedding is allowed compress points together.
+    - `nepochs`: number of training epochs to be used while optimizing the low dimensional embedding
+    - `kw`: additional parameters for the umap algorithm. See [`UMAP.umap`](@ref)
+
+**Return values**:
+
+A low-dimensional embedding of the cells
+"""
+umap(em::LinearEmbedding, ncomponents::Int64=2,; dims=:, kw...) = _umap(em, ncomponents, dims; kw...)
+_umap(em::LinearEmbedding, ncomponents::Int64, ::Colon; kw...) = umap(em.coordinates, ncomponents; kw...)
+_umap(em::LinearEmbedding, ncomponents::Int64, dims; kw...) = umap(view(em.coordinates,:,dims), ncomponents; kw...)
 
 function umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Integer=300, kw...)
     metric = if metric == :cosine
@@ -79,6 +104,28 @@ function umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbou
     UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs, kw...)'
 end
 
+"""
+    umap(X::NamedMatrix, ncomponents::Int64=2; dims=:, metric=:cosine, nneighbours::Int=30, min_dist::Real=.3, nepochs::Int=300, kw...) where T
+
+Performs a Uniform Manifold Approximation and Projection (UMAP) dimensional reduction on the coordinates.
+
+For a more in depth discussion of the mathematics underlying UMAP, see the ArXiv paper: [https://arxiv.org/abs/1802.03426]
+
+**Arguments**:
+
+    - `X`: a labelled matrix with coordinates for each cell
+    - `ncomponents`: the dimensionality of the embedding
+    - `dims`: which dimensions to use
+    - `metric`: distance metric to use
+    - `nneighbours`: the number of neighboring points used in local approximations of manifold structure.
+    - `min_dist`: controls how tightly the embedding is allowed compress points together.
+    - `nepochs`: number of training epochs to be used while optimizing the low dimensional embedding
+    - `kw`: additional parameters for the umap algorithm. See [`UMAP.umap`](@ref)
+
+**Return values**:
+
+A low-dimensional embedding of the cells
+"""
 function umap(X::NamedMatrix, ncomponents::Int64=2; kw...)
     coords = umap(X.array, ncomponents; kw...)
 
