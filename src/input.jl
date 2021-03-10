@@ -251,6 +251,15 @@ function read_h5ad_attr(attrs::HDF5.Attributes, desc::String, names::Vector{Stri
     read(attrs, names[idx])
 end
 
+function read_dataframe_index(dset::HDF5.Dataset)
+    df = read(dset)
+    getindex.(df, :index)
+end
+
+function read_dataframe_index(group::HDF5.Group)
+    read(group["_index"])
+end
+
 function _read_h5ad(fname::AbstractString)
     h5open(fname, "r") do f
         if ! haskey(f, "X")
@@ -273,11 +282,8 @@ function _read_h5ad(fname::AbstractString)
                 SparseMatrixCSC(dim[1], dim[2], p, i, x)
             end
 
-            obs = read(f, "obs")
-            barcodes = getindex.(obs, :index)
-
-            var = read(f, "var")
-            features = getindex.(var, :index)
+            barcodes = read_dataframe_index(f["obs"])
+            features = read_dataframe_index(f["var"])
 
             X, features, barcodes
         catch e
