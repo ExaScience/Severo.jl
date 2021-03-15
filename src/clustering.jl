@@ -66,18 +66,23 @@ function group_singletons!(lbls::Vector{T}, snn::SparseMatrixCSC{R, Int64}; min_
 
     c = StatsBase.counts(lbls)
     singletons = Set(findall(c .<= min_count))
-    others = findall(c .> min_count)
 
-    singles = findall(in(singletons), lbls)
-    for j in singles
-        val, closest = findmax(others) do cl
-            nzv = nonzeros(snn)
-            rv = rowvals(snn)
-            neighbours = findall(idx -> lbls[rv[idx]] == cl, nzrange(snn, j))
-            mean(nzv[neighbours]) # XXX does not make sense to me
+    if !isempty(singletons)
+        others = findall(c .> min_count)
+
+        singles = findall(in(singletons), lbls)
+        for j in singles
+            val, closest = findmax(others) do cl
+                nzv = nonzeros(snn)
+                rv = rowvals(snn)
+                neighbours = findall(idx -> lbls[rv[idx]] == cl, nzrange(snn, j))
+                mean(nzv[neighbours]) # XXX does not make sense to me
+            end
+
+            lbls[j] = closest
         end
 
-        lbls[j] = closest
+        relabel!(lbls, length(c))
     end
 
     lbls

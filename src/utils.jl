@@ -76,6 +76,25 @@ function counting_sort(v::AbstractVector{<:Integer}, M::Integer)
     ix,counts
 end
 
+function relabel!(labels::AbstractVector{<:Integer}, M::Integer)
+	new_labels = zeros(Int64, M)
+	id = 1
+	for (i,c) in enumerate(labels)
+		if new_labels[c] == 0
+			c = new_labels[c] = id
+			id += 1
+		else
+			c = new_labels[c]
+		end
+
+        labels[i] = c
+    end
+
+    labels
+end
+
+relabel(labels::AbstractVector{<:Integer}, M::Integer) = relabel!(copy(labels), M)
+
 function _cut!(labels::AbstractVector, v::AbstractVector, breaks::AbstractVector; right=true)
     lower = first(breaks)
     upper = last(breaks)
