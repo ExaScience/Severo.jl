@@ -81,7 +81,11 @@ function log_means(ix::AbstractVector{<:Integer}, v::AbstractVector, lbls::Abstr
     end
 
     @inbounds for i in 1:length(n)
-        mu1[i] *= n[i] / nc[i]
+        mu1[i] *= if nc[i] != 0
+            n[i] / nc[i]
+        else
+            0.0
+        end
     end
 
     mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (length(lbls) .- nc)
