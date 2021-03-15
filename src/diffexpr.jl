@@ -161,9 +161,9 @@ function prefilter_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::
         mu1, mu2 = mean_fun(x, lbls, nlabels, nc)
 
         selected[:,i] .&= if only_pos
-            abs.(mu1 .- mu2) .> logfc_threshold
-        else
             (mu1 .- mu2) .> logfc_threshold
+        else
+            abs.(mu1 .- mu2) .> logfc_threshold
         end
     end
 
