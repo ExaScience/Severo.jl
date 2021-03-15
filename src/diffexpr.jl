@@ -224,10 +224,10 @@ function find_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::Named
     # fix label order if necessary
     sel = if selection isa NamedArray{Bool,2}
          convert(BitArray, if names(X, 2) != names(selection, 2)
-            selection[names(X,2)].array
-        else
-            selection.array
-        end)
+                selection[names(X,2)].array
+            else
+                selection.array
+            end)
     else
         selection
     end
