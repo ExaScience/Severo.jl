@@ -333,3 +333,10 @@ function filter_rank_markers(de::DataFrame; pval_thresh::Real=1e-2, count::Integ
         x[1:min(count, size(x,1)), :]
     end
 end
+
+function find_all_markers(X::Union{NamedCountMatrix, NamedDataMatrix}, idents::NamedVector{<:Integer}, nlabels::Int64=count_labels(idents);
+        logfc_threshold::Real=0.25, min_pct::Real=0.1, min_diff_pct::Real=-Inf, only_pos::Bool=false, log::Bool=false, method=:wilcoxon)
+    sel = prefilter_markers(X, idents, nlabels, logfc_threshold=logfc_threshold, min_pct=min_pct, min_diff_pct=min_diff_pct, only_pos=only_pos, log=log)
+    de = find_markers(X, idents, method=method, log=log)
+    filter_rank_markers(de)
+end
