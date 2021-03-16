@@ -90,8 +90,8 @@ function log_means(ix::AbstractVector{<:Integer}, v::AbstractVector, lbls::Abstr
 
     mu2 = (sum(nc .* mu1) .- (nc .* mu1)) ./ (length(lbls) .- nc)
 
-    mu1 .= log1p.(mu1)
-    mu2 .= log1p.(mu2)
+    mu1 .= log1p.(mu1) ./ log(2)
+    mu2 .= log1p.(mu2) ./ log(2)
     mu1, mu2
 end
 
