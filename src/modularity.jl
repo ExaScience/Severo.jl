@@ -62,7 +62,7 @@ function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Fl
 		w_tot
 	end
 
-	Clustering(network, resolution, nodecluster, clusters, num_clusters)
+	Clustering(network, resolution, copy(nodecluster), clusters, num_clusters)
 end
 
 function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64, ci::Int64)
