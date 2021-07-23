@@ -3,28 +3,28 @@
 import SparseArrays: SparseMatrixCSC, rowvals, nzrange, nonzeros, nnz
 import Random: shuffle, default_rng, AbstractRNG
 
-struct Edge
+struct Edge{T <: AbstractFloat}
 	node::Int64
-	weight::Float64
+	weight::T
 end
 
-struct Node
-	weight::Float64
+struct Node{T <: AbstractFloat}
+	weight::T
 	edges::UnitRange{Int64} #REMOVE?
 end
 
-struct Network
-	nodes::Vector{Node}
-	edges::Vector{Edge}
-	totw::Float64
-	tot_self::Float64
+struct Network{T <: AbstractFloat}
+	nodes::Vector{Node{T}}
+	edges::Vector{Edge{T}}
+	totw::T
+	tot_self::T
 end
 
-mutable struct Clustering
-	network::Network
-	resolution::Float64
+mutable struct Clustering{T <: AbstractFloat}
+	network::Network{T}
+	resolution::T
 	nodecluster::Vector{Int64}
-	w_tot::Vector{Float64}
+	w_tot::Vector{T}
 	nclusters::Int64
 end
 
@@ -41,19 +41,20 @@ total_weight(network::Network) = network.totw
 alledges(network::Network, nodeid::Int64) = alledges(network, network.nodes[nodeid])
 alledges(network::Network, node::Node) = @inbounds view(network.edges, node.edges)
 
-function Clustering(network::Network, resolution::Float64)
+function Clustering(network::Network{T}, resolution::Real) where T
 	nodecluster = collect(1:numnodes(network))
 	clusters = map(nodes(network)) do node
 		total_weight(network, node)
 	end
 
-	Clustering(network, resolution, nodecluster, clusters, numnodes(network))
+    resolution = convert(T, resolution)
+	Clustering{T}(network, resolution, nodecluster, clusters, numnodes(network))
 end
 
-function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Float64)
+function Clustering(network::Network{T}, nodecluster::Vector{Int64}, resolution::Real) where T
 	num_clusters = length(unique(nodecluster))
 	clusters = map(1:num_clusters) do ci
-		w_tot = 0.0
+		w_tot = zero(T)
 		@inbounds for i in 1:numnodes(network)
 			nodecluster[i] == ci || continue
 
@@ -62,19 +63,20 @@ function Clustering(network::Network, nodecluster::Vector{Int64}, resolution::Fl
 		w_tot
 	end
 
-	Clustering(network, resolution, copy(nodecluster), clusters, num_clusters)
+    resolution = convert(T, resolution)
+	Clustering{T}(network, resolution, copy(nodecluster), clusters, num_clusters)
 end
 
-function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clustering::Clustering, nodeid::Int64, ci::Int64)
+function cluster_weights!(kin::Vector{T}, neighbourcls::Vector{Int64}, clustering::Clustering{T}, nodeid::Int64, ci::Int64) where T
 	# clear old
 	@inbounds for neighbour in neighbourcls
-		kin[neighbour] = 0.0
+		kin[neighbour] = zero(T)
 	end
 	empty!(neighbourcls)
 
 	@inbounds for e in alledges(clustering.network, nodeid)
 		cj = clustering.nodecluster[e.node]
-		if kin[cj] == 0.0
+		if kin[cj] == zero(T)
 			push!(neighbourcls, cj)
 		end
 
@@ -82,8 +84,8 @@ function cluster_weights!(kin::Vector{Float64}, neighbourcls::Vector{Int64}, clu
 	end
 end
 
-function cluster_weights(clustering::Clustering, nodeid::Int64)
-	counts = zeros(Float64, numclusters(clustering))
+function cluster_weights(clustering::Clustering{T}, nodeid::Int64) where T
+	counts = zeros(T, numclusters(clustering))
 
 	network = clustering.network
 	@inbounds for e in alledges(network, nodeid)
@@ -118,14 +120,14 @@ function modularity(clustering::Clustering)
 	sum_w_in(clustering)/totw - clustering.resolution * sum((x/totw)^2 for x in clustering.w_tot)
 end
 
-function remove_node!(clustering::Clustering, nodeid::Int64, ki::Float64)
+function remove_node!(clustering::Clustering{T}, nodeid::Int64, ki::T) where T
 	@inbounds from = clustering.nodecluster[nodeid]
 	@inbounds clustering.w_tot[from] -= ki
 	@inbounds clustering.nodecluster[nodeid] = 0
 	from
 end
 
-function insert_node!(clustering::Clustering, nodeid::Int64, to::Int64, ki::Float64)
+function insert_node!(clustering::Clustering{T}, nodeid::Int64, to::Int64, ki::T) where T
 	@inbounds clustering.w_tot[to] += ki
 	@inbounds clustering.nodecluster[nodeid] = to
 end
@@ -148,18 +150,18 @@ function count_selflinks(snn::SparseMatrixCSC)
 	nselflinks
 end
 
-function Network(snn::SparseMatrixCSC{Float64,Int64})
+function Network(snn::SparseMatrixCSC{T,Int64}) where T
 	nnodes = checksquare(snn)
 	nedges = nnz(snn) - count_selflinks(snn)
 
-	nodes = Vector{Node}(undef, nnodes)
-	edges = Vector{Edge}(undef, nedges)
+	nodes = Vector{Node{T}}(undef, nnodes)
+	edges = Vector{Edge{T}}(undef, nedges)
 
-	totw = 0.0
-	tot_self = 0.0
+	totw = zero(T)
+	tot_self = zero(T)
 	edges_so_far = 0
 	@inbounds for i in 1:nnodes
-		weight = 0.0
+		weight = zero(T)
 		edgesstart = edges_so_far + 1
 
 		r = nzrange(snn, i)
@@ -173,32 +175,30 @@ function Network(snn::SparseMatrixCSC{Float64,Int64})
 			edges[edges_so_far] = Edge(rv, nz)
 		end
 
-		nodes[i] = Node(weight, edgesstart:edges_so_far)
+		nodes[i] = Node{T}(weight, edgesstart:edges_so_far)
 	end
 
-	Network(nodes, edges, totw, tot_self)
+	Network{T}(nodes, edges, totw, tot_self)
 end
 
-function reduced_network(clustering::Clustering)
+function reduced_network(clustering::Clustering{T}) where T
 	network = clustering.network
 	nnodes = numclusters(clustering)
-	nodes = Vector{Node}(undef, nnodes)
+	nodes = Vector{Node{T}}(undef, nnodes)
 
-	edges = Vector{Edge}()
+	edges = Vector{Edge{T}}()
 	sizehint!(edges, min(nnodes^2, numedges(network)))
 
 	totw = total_weight(network)
 	tot_self = network.tot_self
 
-	ix, counts = counting_sort(clustering.nodecluster, clustering.nclusters)
+	#ix, counts = counting_sort(clustering.nodecluster, clustering.nclusters) XXX
 
-	reducedEdges = Vector{Float64}(undef, nnodes)
+	reducedEdges = Vector{T}(undef, nnodes)
 	for i in 1:nnodes
-		fill!(reducedEdges, 0.0)
+		fill!(reducedEdges, zero(T))
 
-		self_weight = 0.0
-		weight = 0.0
-
+		weight = zero(T)
 		for (nodeid, clus) in enumerate(clustering.nodecluster) #XXX
 			clus == i || continue
 
@@ -215,18 +215,18 @@ function reduced_network(clustering::Clustering)
 
 		edge_start = length(edges) + 1
 		for (j,w) in enumerate(reducedEdges)
-			w != 0.0 || continue
-			push!(edges, Edge(j, w))
+			w != zero(T) || continue
+			push!(edges, Edge{T}(j, w))
 		end
 
-		nodes[i] = Node(weight, edge_start:length(edges))
+		nodes[i] = Node{T}(weight, edge_start:length(edges))
 	end
 
-	Network(nodes, edges, totw, tot_self)
+	Network{T}(nodes, edges, totw, tot_self)
 end
 
-function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{Float64}, ki::Float64, totw::Float64)
-	isempty(neighbourcls) && return (0.0, ci)
+function best_local_move(clustering::Clustering{T}, ci::Int64, neighbourcls::Vector{Int64}, kin::Vector{T}, ki::T, totw::T) where T
+	isempty(neighbourcls) && return (zero(T), ci)
 
 	@inbounds init = kin[ci] - clustering.resolution * (clustering.w_tot[ci]*ki)/totw
 	(delta, idx) = findmax(neighbourcls) do neighbour_cluster
@@ -236,21 +236,21 @@ function best_local_move(clustering::Clustering, ci::Int64, neighbourcls::Vector
 	(2(delta - init) / totw, idx)
 end
 
-function local_move!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.0001)
+function local_move!(rng::AbstractRNG, clustering::Clustering{T}; min_modularity::Real=0.0001) where T
 	network = clustering.network
 	totw = total_weight(clustering.network)
 
 	order = shuffle(rng, 1:numnodes(network))
-	kin = zeros(Float64, numclusters(clustering))
+	kin = zeros(T, numclusters(clustering))
 
 	neighbourcls = Vector{Int64}()
 	sizehint!(neighbourcls, numclusters(clustering))
 
 	delta_mod = min_modularity
-	total_gain = 0.0
+	total_gain = zero(T)
 	stable = false
 	while ! stable && (delta_mod >= min_modularity)
-		delta_mod = 0.0
+		delta_mod = zero(T)
 		stable = true
 
 		for nodeid in order
@@ -260,7 +260,7 @@ function local_move!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.
 			cluster_weights!(kin, neighbourcls, clustering, nodeid, ci)
 
 			gain, bestcl = best_local_move(clustering, ci, neighbourcls, kin, ki, totw)
-			if gain > 0.0
+			if gain > zero(T)
 				insert_node!(clustering, nodeid, bestcl, ki)
 				delta_mod += gain
 				stable = false
@@ -298,7 +298,7 @@ function renumber!(clustering::Clustering)
 	end
 
 	for i in id:length(clustering.w_tot)
-		clustering.w_tot[i] = 0.0
+		clustering.w_tot[i] = zero(eltype(clustering.w_tot))
 	end
 
 	clustering.nclusters = id - 1
@@ -314,8 +314,8 @@ function merge!(clustering::Clustering, cluster_reduced::Clustering)
 	clustering
 end
 
-function louvain!(rng::AbstractRNG, clustering::Clustering; min_modularity=0.0001)
-	numnodes(clustering) > 1 || return 0.0
+function louvain!(rng::AbstractRNG, clustering::Clustering{T}; min_modularity::Real=0.0001) where T
+	numnodes(clustering) > 1 || return zero(T)
 
 	gain = local_move!(rng, clustering; min_modularity=min_modularity)
 	renumber!(clustering)
@@ -332,7 +332,7 @@ end
 louvain!(clustering::Clustering; kw...) = louvain!(default_rng(), clustering; kw...)
 
 function louvain(rng::AbstractRNG, network::Network;
-		resolution::Float64=0.8, min_modularity::Float64=0.0001, max_iterations::Int64=10)
+		resolution::Real=0.8, min_modularity::Real=0.0001, max_iterations::Int64=10)
 
 	clustering = Clustering(network, resolution)
 	gain = louvain!(rng, clustering; min_modularity=min_modularity)
