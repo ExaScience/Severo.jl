@@ -3,20 +3,40 @@
 import SparseArrays: sparse, nonzeros, droptol!, diag
 import Distances: SemiMetric, Euclidean, CosineDist
 
-function ann(X::AbstractMatrix{Float64}, k::Int64, metric::SemiMetric, include_self::Bool=true, ntables::Int64=2*size(X,2))
+function ann(X::AbstractMatrix{T}, k::Int64, metric::SemiMetric, include_self::Bool=true, ntables::Int64=2*size(X,2)) where {T <: AbstractFloat}
     n,d = size(X)
 
     nn_index = Matrix{Int32}(undef, n, k)
-    distances = Matrix{Float64}(undef, n, k)
+    distances = Matrix{T}(undef, n, k)
 
     ann!(nn_index, distances, metric, X, k, include_self, ntables)
+end
+
+function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float32}, ::Euclidean, X::StridedMatrix{Float32}, k::Int64, include_self::Bool, ntables::Int64)
+    n,d = size(X)
+    @assert stride(X,1) == 1
+
+    ccall(("FindNeighboursEuclidean32", libcell), Cvoid,
+        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
+        X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
+    nn_index, distances
+end
+
+function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float32}, ::CosineDist, X::StridedMatrix{Float32}, k::Int64, include_self::Bool, ntables::Int64)
+    n,d = size(X)
+    @assert stride(X,1) == 1
+
+    ccall(("FindNeighboursCosine32", libcell), Cvoid,
+        (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
+        X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
+    nn_index, distances
 end
 
 function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::Euclidean, X::StridedMatrix{Float64}, k::Int64, include_self::Bool, ntables::Int64)
     n,d = size(X)
     @assert stride(X,1) == 1
 
-    ccall(("FindNeighboursEuclidean", libcell), Cvoid,
+    ccall(("FindNeighboursEuclidean64", libcell), Cvoid,
         (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
         X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
     nn_index, distances
@@ -26,11 +46,12 @@ function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::CosineDist,
     n,d = size(X)
     @assert stride(X,1) == 1
 
-    ccall(("FindNeighboursCosine", libcell), Cvoid,
+    ccall(("FindNeighboursCosine64", libcell), Cvoid,
         (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
         X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
     nn_index, distances
 end
+
 
 function _nearest_neighbours(X::AbstractMatrix, k::Int64, ::Colon, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
     nn_index, distances = ann(X, k, metric, include_self, ntables)

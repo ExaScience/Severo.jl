@@ -69,7 +69,7 @@ using BuildPolicy = AnnoyIndexSingleThreadedBuildPolicy;
 struct CosineDist : Angular {
   template<typename T>
   static inline T normalized_distance(T distance) {
-    return std::max(distance/2.0, T(0));
+    return std::max(distance/T(2.0), T(0));
   }
 
   static const char* name() {
@@ -77,12 +77,12 @@ struct CosineDist : Angular {
   }
 };
 
-template <typename D>
-void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool include_self, int *nn_index, double *distances) {
-	using AnnoyIndexType = AnnoyIndex<int32_t, double, D, Kiss64Random, BuildPolicy>;
+template <typename T, typename D>
+void FindNeighbours(const T *data, int n, int d, int stride, int k, int q, bool include_self, int *nn_index, T *distances) {
+	using AnnoyIndexType = AnnoyIndex<int32_t, T, D, Kiss64Random, BuildPolicy>;
 	AnnoyIndexType index(d);
 
-	std::vector<double> c(d);
+	std::vector<T> c(d);
 	for(int i = 0; i < n; ++i) {
 		for(int j = 0; j < d; ++j)
 			c[j] = data[i+j*stride];
@@ -101,7 +101,7 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool i
 	#pragma omp parallel
 	{
 		std::vector<int32_t> nn_idx;
-		std::vector<double> dists;
+		std::vector<T> dists;
 
 		nn_idx.reserve(k);
 		dists.reserve(k);
@@ -126,7 +126,7 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool i
 	}
 #else
 	std::vector<int32_t> nn_idx;
-	std::vector<double> dists;
+	std::vector<T> dists;
 
 	nn_idx.reserve(k);
 	dists.reserve(k);
@@ -150,10 +150,19 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool i
 #endif
 }
 
-extern "C" void FindNeighboursEuclidean(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
-	FindNeighbours<Euclidean>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
+extern "C" void FindNeighboursEuclidean32(float *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, float *distances) {
+	FindNeighbours<float, Euclidean>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
 }
 
-extern "C" void FindNeighboursCosine(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
-	FindNeighbours<CosineDist>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
+extern "C" void FindNeighboursCosine32(float *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, float *distances) {
+	FindNeighbours<float, CosineDist>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
 }
+
+extern "C" void FindNeighboursEuclidean64(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
+	FindNeighbours<double, Euclidean>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
+}
+
+extern "C" void FindNeighboursCosine64(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
+	FindNeighbours<double, CosineDist>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
+}
+
