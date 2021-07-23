@@ -2,8 +2,8 @@
 
 import SparseArrays: SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
 
-function row_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: Integer}
-    B = similar(A, Float64)
+function row_norm(A::SparseMatrixCSC{T}, scale_factor::R=1.0) where {T <: Integer, R <: AbstractFloat}
+    B = similar(A, R)
 
     s = sum(A, dims=2)
     @inbounds for i in 1:size(A,2)
@@ -15,7 +15,7 @@ function row_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: 
     B
 end
 
-function log_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: Integer}
+function log_norm(A::SparseMatrixCSC{T}, scale_factor::R=1.0) where {T <: Integer, R <: AbstractFloat}
     B = row_norm(A, scale_factor)
     nonzeros(B) .= log1p.(nonzeros(B))
     B
@@ -34,12 +34,13 @@ Normalize count data with different methods:
     - `X`: the labelled count matrix to normalize
     - `method`: normalization method to apply
     - `scale_factor`: the scaling factor
+    - `dtype`: datatype to be used for the output
 
 **Return values**:
 
 A labelled data matrix
 """
-function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1.)
+function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1., dtype::Type{T}=Float64) where {T <: AbstractFloat}
     if isa(method, AbstractString)
         method = Symbol(method)
     end
@@ -52,7 +53,7 @@ function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor
         error("unknown normalization method: $method")
     end
 
-    scale_factor = convert(Float64, scale_factor)
+    scale_factor = convert(dtype, scale_factor)
     S = f(X.array, scale_factor)
     NamedArray(S, X.dicts, X.dimnames)
 end

@@ -2,11 +2,11 @@
 
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, Adjoint, nonzeros, nonzeroinds, nnz, nzrange
 
-function mean_var(x::Union{SparseColumnView,SparseVector})
+function mean_var(::Type{T}, x::Union{SparseColumnView,SparseVector}) where T
     n = length(x)
 
     count = n - nnz(x)
-    mu = s = zero(eltype(x))
+    mu = s = zero(T)
 
    # nonzeros
     for v in nonzeros(x)
@@ -20,16 +20,21 @@ function mean_var(x::Union{SparseColumnView,SparseVector})
     mu, var
 end
 
-function mean_std(x::Union{SparseColumnView,SparseVector})
-    mu, var = mean_var(x)
+function mean_std(::Type{T}, x::Union{SparseColumnView,SparseVector}) where T
+    mu, var = mean_var(T, x)
     mu, sqrt(var)
 end
 
-function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+mean_var(x::Union{SparseColumnView,SparseVector}) = mean_var(Float64, x)
+mean_std(x::Union{SparseColumnView,SparseVector}) = mean_std(Float64, x)
+mean_var(x::Union{SparseColumnView{T},SparseVector{T}}) where {T<:AbstractFloat} = mean_var(T, x)
+mean_std(x::Union{SparseColumnView{T},SparseVector{T}}) where {T<:AbstractFloat} = mean_std(T, x)
+
+function mean_var(::Type{T}, x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) where T
     @assert length(x) == length(lbls)
 
-    mu = zeros(nlabels)
-    var = zeros(nlabels)
+    mu = zeros(T, nlabels)
+    var = zeros(T, nlabels)
     n = zeros(Int64, nlabels)
     nz = zeros(Int64, nlabels)
 
@@ -69,11 +74,11 @@ function mean_var(x::Union{SparseColumnView,SparseVector}, lbls::AbstractVector{
     mu, var, n
 end
 
-function mean_var(x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
+function mean_var(::Type{T}, x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) where T
     @assert length(x) == length(lbls)
 
-    mu = zeros(nlabels)
-    var = zeros(nlabels)
+    mu = zeros(T, nlabels)
+    var = zeros(T, nlabels)
     n = zeros(Int64, nlabels)
 
     @inbounds for (v,k) in zip(x, lbls)
@@ -87,48 +92,60 @@ function mean_var(x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::I
     mu, var, n
 end
 
-function mean_std(x::AbstractVector, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls))
-    mu, var = mean_var(x, lbls, nlabels)
+function mean_std(::Type{T}, x::Union{SparseColumnView,SparseVector, AbstractVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) where T
+    mu, var = mean_var(T, x, lbls, nlabels)
     var .= sqrt.(var)
     mu, var
 end
 
-function mean_std(A::SparseMatrixCSC)
+mean_var(x::Union{SparseColumnView,SparseVector,AbstractVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) = mean_var(Float64, x, lbls, nlabels)
+mean_std(x::Union{SparseColumnView,SparseVector,AbstractVector}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) = mean_std(Float64, x, lbls, nlabels)
+mean_var(x::Union{SparseColumnView{T},SparseVector{T},AbstractVector{T}}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) where {T<:AbstractFloat} = mean_var(T, x, lbls, nlabels)
+mean_std(x::Union{SparseColumnView{T},SparseVector{T},AbstractVector{T}}, lbls::AbstractVector{<:Integer}, nlabels::Integer=count_labels(lbls)) where {T<:AbstractFloat} = mean_std(T, x, lbls, nlabels)
+
+function mean_std(::Type{T}, A::SparseMatrixCSC) where T
     n, d = size(A)
-    mu = zeros(d)
-    std = zeros(d)
+    mu = zeros(T, d)
+    std = zeros(T, d)
 
     @inbounds for (i, a) in enumerate(eachcol(A))
-        mu[i], v = mean_var(a)
+        mu[i], v = mean_var(T, a)
         std[i] = sqrt(v)
     end
 
     mu, std
 end
 
-function mean_var(A::SparseMatrixCSC)
+function mean_var(::Type{T}, A::SparseMatrixCSC) where T
     n, d = size(A)
-    mu = zeros(d)
-    var = zeros(d)
+    mu = zeros(T, d)
+    var = zeros(T, d)
 
     @inbounds for (i, a) in enumerate(eachcol(A))
-        mu[i], var[i] = mean_var(a)
+        mu[i], var[i] = mean_var(T, a)
     end
 
     mu, var
 end
 
+mean_std(A::SparseMatrixCSC) = mean_std(Float64, A)
+mean_var(A::SparseMatrixCSC) = mean_var(Float64, A)
+mean_std(A::SparseMatrixCSC{T}) where {T<:AbstractFloat} = mean_std(T, A)
+mean_var(A::SparseMatrixCSC{T}) where {T<:AbstractFloat} = mean_var(T, A)
+
+mean_std(::Type{T}, adjA::Adjoint{<:Any,<:SparseMatrixCSC}) where T = mean_std(T, copy(adjA))
 mean_std(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_std(copy(adjA))
+mean_var(::Type{T}, adjA::Adjoint{<:Any,<:SparseMatrixCSC}) where T = mean_var(T, copy(adjA))
 mean_var(adjA::Adjoint{<:Any,<:SparseMatrixCSC}) = mean_var(copy(adjA))
 
 """
 variance to mean ratio (VMR) in non-logspace
 """
-function mean_var(f::Function, x::Union{SparseColumnView,SparseVector})
+function mean_var(::Type{T}, f::Function, x::Union{SparseColumnView,SparseVector}) where T
     n = length(x)
 
     count = n - nnz(x)
-    mu = var = zero(eltype(x))
+    mu = var = zero(T)
 
     # nonzeros
     for v in nonzeros(x)
@@ -142,32 +159,36 @@ function mean_var(f::Function, x::Union{SparseColumnView,SparseVector})
     var /= (n .- 1)
     mu, var
 end
+mean_var(f::Function, x::Union{SparseColumnView,SparseVector}) = mean_var(Float64, f, x)
 
-function mean_var(f::Function, A::SparseMatrixCSC)
+function mean_var(::Type{T}, f::Function, A::SparseMatrixCSC) where T
     n, d = size(A)
-    mu = zeros(d)
-    var = zeros(d)
+    mu = zeros(T, d)
+    var = zeros(T, d)
 
     @inbounds for (i, a) in enumerate(eachcol(A))
-        mu[i], var[i] = mean_var(f, a)
+        mu[i], var[i] = mean_var(T, f, a)
     end
 
     mu, var
 end
+mean_var(f::Function, A::SparseMatrixCSC) = mean_var(Float64, f, A)
 
-function log_VMR(f::Function, A::SparseMatrixCSC)
-    mu, var = mean_var(f, A)
+function log_VMR(::Type{T}, f::Function, A::SparseMatrixCSC) where T
+    mu, var = mean_var(T, f, A)
     log1p.(mu), log.(var ./ mu)
 end
 
-log_VMR(A::SparseMatrixCSC) = log_VMR(identity, A)
+log_VMR(::Type{T}, A::SparseMatrixCSC) where T = log_VMR(T, identity, A)
+log_VMR(A::SparseMatrixCSC) = log_VMR(Float64, identity, A)
+log_VMR(A::SparseMatrixCSC{T}) where {T<:AbstractFloat} = log_VMR(T, identity, A)
 
-function scale_data(A::SparseMatrixCSC; scale_max::Float64=10.)
+function scale_data(A::SparseMatrixCSC, scale_max::R=Inf) where {R <: AbstractFloat}
     n, d = size(A)
-    B = similar(A, Float64)
+    B = similar(A, R)
 
     # ((x - mu) / std > scale_max)
-    mu = zeros(d)
+    mu = zeros(R, d)
     @inbounds for i in 1:size(A,2)
         mu[i], std = mean_std(view(A, :, i))
         mu[i] /= std
@@ -245,7 +266,7 @@ dimnames(C::NamedCenteredMatrix) = dimnames(C.A)
 dimnames(C::NamedCenteredMatrix, d::Integer) = dimnames(C.A, d)
 
 """
-    scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf)
+    scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} ; scale_max=Inf, dtype::Type{<:AbstractFloat})
 
 Scale and center a count/data matrix along the cells such that each feature is standardized
 
@@ -258,8 +279,14 @@ Scale and center a count/data matrix along the cells such that each feature is s
 
 A centered matrix
 """
-function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf) where T
-    scale_max = convert(Float64, scale_max)
-    B, mu = scale_data(X.array; scale_max=scale_max)
+function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf, dtype::Type{<:AbstractFloat}=Float64) where T
+    scale_max = convert(dtype, scale_max)
+    B, mu = scale_data(X.array, scale_max)
+    CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
+end
+
+function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf, dtype::Type{<:AbstractFloat}=T) where {T <: AbstractFloat}
+    scale_max = convert(dtype, scale_max)
+    B, mu = scale_data(X.array, scale_max)
     CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
 end
