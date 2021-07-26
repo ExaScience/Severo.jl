@@ -62,16 +62,16 @@ function _nearest_neighbours(X::AbstractMatrix, k::Int64, dims, metric::SemiMetr
     _nearest_neighbours(view(X, :, dims), k, :, metric, include_self, ntables)
 end
 
-function jaccard_index(nn::SparseMatrixCSC, k; prune::Real=1/15)
-    snn = convert(SparseMatrixCSC{Float64}, nn * nn')
+function _jaccard_index(::Type{T}, nn::SparseMatrixCSC, k, prune::T) where {T <: AbstractFloat}
+    snn = convert(SparseMatrixCSC{T}, nn * nn')
     f(x) = x / (k + (k - x))
     nonzeros(snn) .= f.(nonzeros(snn))
     droptol!(snn, prune)
     snn
 end
 
-function jaccard_index(nn::SparseMatrixCSC; prune::Real=1/15)
-    snn = convert(SparseMatrixCSC{Float64}, nn * nn')
+function _jaccard_index(::Type{T}, nn::SparseMatrixCSC, prune::T) where {T <: AbstractFloat}
+    snn = convert(SparseMatrixCSC{T}, nn * nn')
     k = diag(snn)
 
     nz = nonzeros(snn)
@@ -100,8 +100,32 @@ of the union. "0" indicating no overlap and "1" indicating full overlap.
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-function jaccard_index(nn::NamedArray{T,2}; prune::Real=1/15) where T
-    snn = jaccard_index(nn.array; prune=prune)
+function jaccard_index(nn::NamedArray{T,2}; prune::Real=1/15, dtype::Type{R}=Float64) where {T, R <: AbstractFloat}
+    prune = convert(dtype, prune)
+    snn = _jaccard_index(dtype, nn.array, prune)
+    NamedArray(snn, (nn.dicts[1], nn.dicts[1]), (nn.dimnames[1], nn.dimnames[1]))
+end
+
+"""
+    jaccard_index(X::NamedArray{T,2}, k::Int64; prune::Real=1/15) where T
+
+Compute a graph with edges defined by the jaccard index. The Jaccard index measures similarity
+between nearest neighbour sets, and is defined as the size of the intersection divided by the size
+of the union. "0" indicating no overlap and "1" indicating full overlap.
+
+**Arguments**:
+    - `nn`: a nearest neighbour graph
+    - `k`: maximum number of neighbours
+    - `prune`: cutoff for the Jaccard index, edges with values below this cutoff are removed from the resulting graph
+
+**Return values**:
+
+A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
+the neighbourhoods of the cells as computed with the Jaccard index.
+"""
+function jaccard_index(nn::NamedArray{T,2}, k::Int64; prune::Real=1/15, dtype::Type{R}=Float64) where {T, R <: AbstractFloat}
+    prune = convert(dtype, prune)
+    snn = _jaccard_index(dtype, nn.array, k, prune)
     NamedArray(snn, (nn.dicts[1], nn.dicts[1]), (nn.dimnames[1], nn.dimnames[1]))
 end
 
@@ -171,7 +195,8 @@ the neighbourhoods of the cells as computed with the Jaccard index.
 """
 function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune::Real=1/15) where T
     nn = _nearest_neighbours(X.array, k, dims, metric, include_self, ntables)
-    snn = jaccard_index(nn, k; prune=prune)
+    prune = convert(T, prune)
+    snn = _jaccard_index(T, nn, k, prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
 
