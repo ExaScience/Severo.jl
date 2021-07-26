@@ -55,7 +55,8 @@ end
 
 function _nearest_neighbours(X::AbstractMatrix, k::Int64, ::Colon, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
     nn_index, distances = ann(X, k, metric, include_self, ntables)
-    sparse(repeat(1:size(nn_index,1),k), vec(nn_index), trues(length(nn_index)))
+    sparse(vec(nn_index'), repeat(1:size(nn_index,1),inner=k), trues(length(nn_index)))
+    #sparse(repeat(1:size(nn_index,1),k), vec(nn_index), trues(length(nn_index)))
 end
 
 function _nearest_neighbours(X::AbstractMatrix, k::Int64, dims, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
@@ -63,7 +64,7 @@ function _nearest_neighbours(X::AbstractMatrix, k::Int64, dims, metric::SemiMetr
 end
 
 function _jaccard_index(::Type{T}, nn::SparseMatrixCSC, k, prune::T) where {T <: AbstractFloat}
-    snn = convert(SparseMatrixCSC{T}, nn * nn')
+    snn = convert(SparseMatrixCSC{T}, nn' * nn)
     f(x) = x / (k + (k - x))
     nonzeros(snn) .= f.(nonzeros(snn))
     droptol!(snn, prune)
@@ -71,7 +72,7 @@ function _jaccard_index(::Type{T}, nn::SparseMatrixCSC, k, prune::T) where {T <:
 end
 
 function _jaccard_index(::Type{T}, nn::SparseMatrixCSC, prune::T) where {T <: AbstractFloat}
-    snn = convert(SparseMatrixCSC{T}, nn * nn')
+    snn = convert(SparseMatrixCSC{T}, nn' * nn)
     k = diag(snn)
 
     nz = nonzeros(snn)
@@ -145,7 +146,7 @@ Compute a k-nearest neighbours graph based on coordinates for each cell.
 
 **Return values**:
 
-A k-nearest neighbours graph represented by a sparse matrix
+A k-nearest neighbours graph represented by a sparse matrix. k-neighbours are stored as rows for each cell (cols)
 """
 function nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
     nn = _nearest_neighbours(X.array, k, dims, metric, include_self, ntables)
@@ -168,7 +169,7 @@ Compute a k-nearest neighbours graph based on an embedding
 
 **Return values**:
 
-A k-nearest neighbours graph represented by a sparse matrix
+A k-nearest neighbours graph represented by a sparse matrix. k-neighbours are stored as rows for each cell (cols)
 """
 nearest_neighbours(em::LinearEmbedding, k::Int64, dims=:; kw...) = nearest_neighbours(em.coordinates, k; dims=dims, kw...)
 
