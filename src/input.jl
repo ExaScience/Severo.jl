@@ -731,6 +731,9 @@ function convert_counts(X::AbstractMatrix, features::AbstractVector, barcodes::A
         X = convert(AbstractMatrix{Int32}, X)
     end
 
+    # replace underscores
+    features .= replace.(features, "_" => "-")
+
     if unique_features
         make_unique!(features, features)
     end
