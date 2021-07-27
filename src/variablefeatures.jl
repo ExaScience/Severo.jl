@@ -19,8 +19,10 @@ function nan2zero!(v::AbstractVector{T}) where {T <: AbstractFloat}
     v .= ifelse.(isnan.(v), 0.0, v)
 end
 
-function variance_stabilizing_transformation(A::SparseMatrixCSC{<:Integer}; loess_span=0.5)
-    mu, std = mean_std(A)
+function variance_stabilizing_transformation(A::SparseMatrixCSC{<:Integer}; loess_span::Real=0.5, dtype::Type{<:AbstractFloat}=Float64)
+    loess_span = convert(dtype, loess_span)
+
+    mu, std = mean_std(dtype, A)
     non_const = std .> 0
 
     xs, ys = log10.(mu[non_const]), log10.(std[non_const])
@@ -43,16 +45,15 @@ qnorm(q::Real) = quantile(Normal(), q)
 # were: (1) 0.1 log10 units above the expected variance for a perfectly Poisson-distributed
 # gene of equivalent mean expression; and (2) above a Bonferroni-corrected 99% confidence
 # interval defined by a normal approximation of a Poisson distribution. Saunders et al. 2018
-function select_features_saunders(counts::SparseMatrixCSC{<:Integer}, norm::SparseMatrixCSC{<:Real}; var_thresh=0.1, alpha_thresh=0.99)
+function select_features_saunders(counts::SparseMatrixCSC{<:Integer}, norm::SparseMatrixCSC{T}; alpha_thresh::Real=0.99) where {T<:Real}
     ncells, ngenes = size(counts)
     trx_per_cell = vec(sum(counts, dims=2))
     gene_expr_mean, gene_expr_var = mean_var(norm)
     nolan_constant = mean(1 ./ trx_per_cell)
-    alphathresh_corrected = alpha_thresh / ngenes
+    alphathresh_corrected = convert(T, alpha_thresh) / ngenes
     genemeanupper = gene_expr_mean .+ qnorm(1 - alphathresh_corrected / 2) * sqrt.(gene_expr_mean * nolan_constant / ncells)
     basegenelower = log10.(gene_expr_mean .* nolan_constant)
 
-    #findall(((gene_expr_var ./ nolan_constant) .> genemeanupper) .& (log10.(gene_expr_var) .> basegenelower .+ var_thresh))
     metric = zeros(ngenes)
     J = ((gene_expr_var ./ nolan_constant) .> genemeanupper)
     metric[J] = log10.(gene_expr_var[J]) .- basegenelower[J]
@@ -112,19 +113,19 @@ Identification of highly variable features: find features that exhibit high cell
 
 The `nfeatures` top-ranked features
 """
-function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, kw...)
+function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, dtype::Type{<:AbstractFloat}=Float64, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
     end
 
     metric = if method == :vst
-        variance_stabilizing_transformation(counts.array, kw...)
+        variance_stabilizing_transformation(counts.array, dtype=dtype, kw...)
     else
         norm = if :norm in keys(kw)
             norm = kw[:norm]
             isa(norm, NamedArray) ? norm.array : norm
         else
-            row_norm(counts.array)
+            row_norm(counts.array, one(dtype))
         end
 
         if method == :saunders
