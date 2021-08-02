@@ -38,7 +38,7 @@ function _nearest_neighbours(X::AbstractMatrix, k::Int64, ::Colon, metric::SemiM
 end
 
 function _nearest_neighbours(X::AbstractMatrix, k::Int64, dims, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2))
-    _nearest_neighbours(view(X.array, :, dims), k, :, metric, include_self, ntables)
+    _nearest_neighbours(view(X, :, dims), k, :, metric, include_self, ntables)
 end
 
 function jaccard_index(nn::SparseMatrixCSC, k; prune::Real=1/15)
@@ -148,8 +148,8 @@ the size of the intersection divided by the size of the union. "0" indicating no
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune=1/15) where T
-    nn = _nearest_neighbours(X, k, dims, metric, include_self, ntables)
+function shared_nearest_neighbours(X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2), prune::Real=1/15) where T
+    nn = _nearest_neighbours(X.array, k, dims, metric, include_self, ntables)
     snn = jaccard_index(nn, k; prune=prune)
     NamedArray(snn, (X.dicts[1], X.dicts[1]), (X.dimnames[1], X.dimnames[1]))
 end
