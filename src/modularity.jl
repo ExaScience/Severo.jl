@@ -236,7 +236,7 @@ function best_local_move(clustering::Clustering{T}, ci::Int64, neighbourcls::Vec
     (2(delta - init) / totw, idx)
 end
 
-function local_move!(rng::AbstractRNG, clustering::Clustering{T}; min_modularity::Real=0.0001) where T
+function local_move!(rng::AbstractRNG, clustering::Clustering{T}; min_modularity::T=0.0001) where T
     network = clustering.network
     totw = total_weight(clustering.network)
 
@@ -317,12 +317,13 @@ end
 function louvain!(rng::AbstractRNG, clustering::Clustering{T}; min_modularity::Real=0.0001) where T
     numnodes(clustering) > 1 || return zero(T)
 
+    min_modularity = convert(T, min_modularity)
     gain = local_move!(rng, clustering; min_modularity=min_modularity)
     renumber!(clustering)
 
     if numclusters(clustering) < numnodes(clustering)
         reduced_clustering = Clustering(reduced_network(clustering), clustering.resolution)
-        gain += louvain!(reduced_clustering; min_modularity=min_modularity)
+        gain += louvain!(rng, reduced_clustering; min_modularity=min_modularity)
         clustering = merge!(clustering, reduced_clustering)
     end
 
