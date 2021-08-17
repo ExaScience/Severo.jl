@@ -6,6 +6,7 @@ import GZip
 import HDF5
 import HDF5: h5open, attributes, haskey, filename
 import SparseArrays: nonzeros, rowvals, getcolptr, sparse
+import CategoricalArrays: CategoricalVector
 
 struct MMParseError <: Exception
     msg::AbstractString
@@ -388,6 +389,33 @@ function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::String, data::Ab
     end
 end
 
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::AbstractString, df::DataFrame; pv...)
+    g = HDF5.create_group(parent, name)
+    cats = HDF5.create_group(g, "__categories")
+
+    attrs = attributes(g)
+    if "_index" in names(df)
+      HDF5.write_attribute(g, "_index", "_index")
+    end
+    HDF5.write_attribute(g, "column-order", names(df))
+    HDF5.write_attribute(g, "encoding-type", "dataframe")
+    HDF5.write_attribute(g, "encoding-version", "0.1.0")
+
+    write_col(n::AbstractString, x::AbstractVector) = write(g, n, x; pv...)
+    function write_col(n::AbstractString, x::CategoricalVector)
+      refs = map(levelcode, x)
+      vals = levels(x)
+      write(cats, n, vals; pv...)
+      write(g, n, x; pv...)
+      write(attributes(g[n]), "categories", cats[n])
+    end
+
+    for n in names(df)
+        x = df[!,n]
+        write_col(n, x)
+    end
+end
+
 function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
     h5open(fname, "cw") do f
         try
@@ -400,11 +428,10 @@ function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
             a["encoding-type"] = "csc_matrix"
             a["shape"] = collect(size(x))
 
-            nt = NamedTuple{(:index,),Tuple{String}}
-            obs = map(n -> nt((n,)), names(X,1))
+            obs = DataFrame(_index=names(X,1))
             write(f, "obs", obs)
 
-            var = map(n -> nt((n,)), names(X,2))
+            var = DataFrame(_index=names(X,2))
             write(f, "var", var)
         catch e
             if isa(e, ErrorException) # probably HDF5 error
