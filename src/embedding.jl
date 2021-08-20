@@ -62,7 +62,7 @@ function pca(X::Union{NamedMatrix, NamedCenteredMatrix}, npcs::Int64; kw...)
 end
 
 function UMAP.knn_search(X::AbstractMatrix, k, ::Val{:ann})
-    knns, dists = ann(X', k, CosineDist(), false, size(X,1))
+    knns, dists = ann(default_rng(), X', k, CosineDist(), false, size(X,1))
     knns', dists'
 end
 
