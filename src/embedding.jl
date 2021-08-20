@@ -69,7 +69,7 @@ end
 _umap(X::AbstractMatrix, ncomponents::Int64, ::Colon; kw...) = _umap(X, ncomponents; kw...)
 _umap(X::AbstractMatrix, ncomponents::Int64, dims; kw...) = _umap(view(X, :, dims), ncomponents; kw...)
 
-function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Integer=300, kw...)
+function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Union{Nothing,Integer}=nothing, kw...)
     metric = if metric == :cosine
         UMAP.CosineDist()
     elseif metric == :euclidian
@@ -78,7 +78,13 @@ function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbo
         metric
     end
 
-    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=nepochs, kw...)'
+    n_epochs = if nepochs === nothing
+        (size(X,1) <= 10000) ? 500 : 200
+    else
+        nepochs
+    end
+
+    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=n_epochs, kw...)'
 end
 
 """
