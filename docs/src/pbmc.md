@@ -88,11 +88,11 @@ After removing unwanted cells from the dataset, the next step is to normalize th
 measurements for each cell by the total expression, multiplies this by a scale factor and optionally log-transforming the result.
 
 ```@example pbmc
-Y = normalize(X, method=:lognormalize, scale_factor=1e4)
+Y = normalize_cells(X, method=:lognormalize, scale_factor=1e4)
 ```
 
 ```@docs
-normalize
+normalize_cells
 ```
 
 ### Identifying highly variable features

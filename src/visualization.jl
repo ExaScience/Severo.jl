@@ -19,7 +19,7 @@ Plot the features with the highest average expression across all cells, along wi
 A plot object
 """
 function plot_highest_expressed(X::NamedCountMatrix; n::Int64=10, dropfeatures::Union{Nothing, AbstractArray}=nothing)
-    norm = normalize(X, scale_factor=100, method=:relativecounts)
+    norm = normalize_cells(X, scale_factor=100, method=:relativecounts)
     if dropfeatures !== nothing
         norm = norm[:, Not(dropfeatures)]
     end

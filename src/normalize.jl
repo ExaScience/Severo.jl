@@ -22,7 +22,7 @@ function log_norm(A::SparseMatrixCSC{T}, scale_factor::Float64=1.0) where {T <: 
 end
 
 """
-    normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor=1.0)
+    normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor=1.0)
 
 Normalize count data with different methods:
 
@@ -39,7 +39,7 @@ Normalize count data with different methods:
 
 A labelled data matrix
 """
-function normalize(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1.)
+function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1.)
     if isa(method, AbstractString)
         method = Symbol(method)
     end
