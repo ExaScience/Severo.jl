@@ -199,3 +199,12 @@ function findmax(f, itr)
 	(f_m, m)
 end
 
+import LinearAlgebra: SVD
+function svd_flip!(S::SVD)
+    U,s,V = S
+    max_u_col = argmax(abs.(U), dims=1)
+    signs = sign.(U[max_u_col])
+    U .*= signs
+    V .*= signs
+    S
+end
