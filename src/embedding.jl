@@ -13,7 +13,7 @@ end
 
 include("irlba.jl")
 
-function _pca(X, npcs::Int64; algorithm=:irlba, kw...)
+function _pca(X, npcs::Int64; algorithm=:arpack, kw...)
     m,n = size(X)
     npcs = min(min(m,n), npcs)
 
