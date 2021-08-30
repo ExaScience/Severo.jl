@@ -1,18 +1,18 @@
 # copyright imec - evaluation license - not for distribution
 
-using Cell, Test
+using Severo, Test
 import SparseArrays: sprand
 import LinearAlgebra: svd, SVD, Diagonal, norm
 import Statistics: mean
 import Distributions: rand, Poisson
 
 relative_error(X::AbstractMatrix, S::SVD, k::Integer=length(S.S)) = norm(X - S.U[:,1:k] * Diagonal(S.S[1:k]) * S.Vt[1:k,:])
-svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
+svd(C::Severo.CenteredMatrix) = svd(convert(Matrix, C))
 
 @testset "irlba" begin
 	@testset "dense square" begin
 		X = randn(50, 50)
-		S = Cell.irlba(X, 20; tol=1e-5)
+		S = Severo.irlba(X, 20; tol=1e-5)
 		SS = svd(X)
 		@test S.S ≈ SS.S[1:20]
 		@test norm(X'*S.U - S.V*Diagonal(S.S))/norm(X) < 1e-5
@@ -21,7 +21,7 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 
 	@testset "dense non-square" begin
 		X = randn(100, 50)
-		S = Cell.irlba(X, 20; tol=1e-5)
+		S = Severo.irlba(X, 20; tol=1e-5)
 		SS = svd(X)
 		@test S.S ≈ SS.S[1:20]
 		@test norm(X'*S.U - S.V*Diagonal(S.S))/norm(X) < 1e-5
@@ -30,7 +30,7 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 
 	@testset "sparse" begin
 		X = sprand(2000, 400, .1)
-		S = Cell.irlba(X, 2; tol=1e-9)
+		S = Severo.irlba(X, 2; tol=1e-9)
 		SS = svd(Matrix(X))
 		@test S.S ≈ SS.S[1:2]
 		@test relative_error(X, S) ≈ relative_error(X, SS, 2)
@@ -41,11 +41,11 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 		X = randn(20, 10)
 		SS = svd(X)
 
-		S = Cell.irlba(X, 2; tol=1e-5)
+		S = Severo.irlba(X, 2; tol=1e-5)
 		@test S.S ≈ SS.S[1:2]
 		@test relative_error(X, S) ≈ relative_error(X, SS, 2)
 
-		S = Cell.irlba(X, 3, S; tol=1e-5)
+		S = Severo.irlba(X, 3, S; tol=1e-5)
 		@test_broken S.S[3] ≈ SS.S[3]
 		@test_broken relative_error(X, S) ≈ relative_error(X, SS, 3)
 	end
@@ -54,11 +54,11 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 		X = randn(20, 10)
 		mu = vec(mean(X, dims=1))
 
-		C = Cell.CenteredMatrix(X, mu)
+		C = Severo.CenteredMatrix(X, mu)
 		Q = convert(Matrix, C)
 		SS = svd(Q)
 
-		S = Cell.irlba(C, 3)
+		S = Severo.irlba(C, 3)
 		@test S.S ≈ SS.S[1:3]
 		@test relative_error(Q, S) ≈ relative_error(Q, SS, 3)
 		@test norm(Q'*S.U - S.V*Diagonal(S.S))/norm(Q) < 1e-9
@@ -68,11 +68,11 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 		X = sprand(2000, 400, .1)
 		mu = vec(mean(X, dims=1))
 
-		C = Cell.CenteredMatrix(X, mu)
+		C = Severo.CenteredMatrix(X, mu)
 		Q = convert(Matrix, C)
 		SS = svd(Q)
 
-		S = Cell.irlba(C, 2, tol=1e-9)
+		S = Severo.irlba(C, 2, tol=1e-9)
 		@test S.S ≈ SS.S[1:2]
 		@test relative_error(Q, S) ≈ relative_error(Q, SS, 2)
 		@test norm(Q'*S.U - S.V*Diagonal(S.S))/norm(Q) < 1e-9
@@ -80,8 +80,8 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 
 	@testset "tall-skinny and tranpose" begin
 		X = randn(10000, 10)
-		S1 = Cell.irlba(X, 2, tol=1e-9)
-		S2 = Cell.irlba(X', 2, tol=1e-9)
+		S1 = Severo.irlba(X, 2, tol=1e-9)
+		S2 = Severo.irlba(X', 2, tol=1e-9)
 		@test S1.S ≈ S2.S
 		@test abs.(S1.U) ≈ abs.(S2.V) #XXX lazy testing
 		@test abs.(S1.V) ≈ abs.(S2.U)
@@ -91,8 +91,8 @@ svd(C::Cell.CenteredMatrix) = svd(convert(Matrix, C))
 		X = sprand(3000, 10000, 0.01, (i) -> rand(Poisson(10), i))
 		mu = vec(mean(X, dims=2))
 
-		C = Cell.CenteredMatrix(X', mu)
-		S = Cell.irlba(C, 10)
+		C = Severo.CenteredMatrix(X', mu)
+		S = Severo.irlba(C, 10)
 		SS = svd(C)
 		@test S.S ≈ SS.S[1:10]
 	end

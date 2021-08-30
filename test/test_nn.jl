@@ -1,4 +1,4 @@
-using Cell
+using Severo
 using Test
 
 using Distances
@@ -11,7 +11,7 @@ import Statistics: quantile
 
     metric = Euclidean()
     k = 4
-    nn_index, distances = Cell.ann(X, k, metric)
+    nn_index, distances = Severo.ann(X, k, metric)
 
     D = pairwise(metric, X, dims=1)
     j = map(1:size(X,1)) do i
@@ -28,7 +28,7 @@ end
 
     metric = CosineDist()
     k = 4
-    nn_index, distances = Cell.ann(X, k, metric)
+    nn_index, distances = Severo.ann(X, k, metric)
 
     D = pairwise(metric, X, dims=1)
     j = map(1:size(X,1)) do i
@@ -46,7 +46,7 @@ end
 
     metric = Euclidean()
     k = 4
-    nn_index, distances = Cell.ann(Z, k, metric)
+    nn_index, distances = Severo.ann(Z, k, metric)
 
     D = pairwise(metric, Z, dims=1)
     j = map(1:size(Z,1)) do i

@@ -156,7 +156,7 @@ function mean_var(f::Function, A::SparseMatrixCSC)
 end
 
 function log_VMR(f::Function, A::SparseMatrixCSC)
-    mu, var = Cell.mean_var(f, A)
+    mu, var = mean_var(f, A)
     log1p.(mu), log.(var ./ mu)
 end
 

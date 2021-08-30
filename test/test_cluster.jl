@@ -1,6 +1,6 @@
 # copyright imec - evaluation license - not for distribution
 
-using Cell, Test
+using Severo, Test
 import SparseArrays: SparseMatrixCSC
 import NamedArrays: NamedArray
 
@@ -32,6 +32,6 @@ import NamedArrays: NamedArray
 	end
 
 	SNN = NamedArray(A)
-	clusters = Cell.cluster(SNN)
+	clusters = Severo.cluster(SNN)
 	@test length(unique(clusters)) == 3
 end

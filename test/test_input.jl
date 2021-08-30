@@ -1,6 +1,6 @@
 # copyright imec - evaluation license - not for distribution
 
-using Cell, Test
+using Severo, Test
 import SparseArrays: sprand, sparse
 import Distributions: Poisson, rand
 

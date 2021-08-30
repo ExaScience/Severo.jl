@@ -1,7 +1,7 @@
 # copyright imec - evaluation license - not for distribution
 
 using BenchmarkTools
-using Cell
+using Severo
 
 const SUITE = BenchmarkGroup()
 

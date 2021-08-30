@@ -1,6 +1,6 @@
 # copyright imec - evaluation license - not for distribution
 
-using Cell, Test
+using Severo, Test
 
 include("test_utils.jl")
 include("test_input.jl")

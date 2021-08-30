@@ -1,14 +1,14 @@
 # copyright imec - evaluation license - not for distribution
 
-using Documenter, Cell
+using Documenter, Severo
 
 makedocs(
-    modules = [Cell],
+    modules = [Severo],
     doctest = false,
     source = "src",
     build   = "build",
     clean = true,
-    sitename = "Cell.jl",
+    sitename = "Severo.jl",
     authors = "Tom Haber and contributors",
     pages = [
         "Home" => "index.md",

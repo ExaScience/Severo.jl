@@ -1,7 +1,7 @@
 # copyright imec - evaluation license - not for distribution
 
 using Test
-using Cell
+using Severo
 
 import SparseArrays: SparseMatrixCSC
 import NamedArrays: NamedArray, names
@@ -30,7 +30,7 @@ X = SparseMatrixCSC(100, 20,
        17, 1, 5, 5, 10, 4, 10, 5, 1, 9, 1, 4, 16, 12, 17, 13, 5, 2, 2, 7, 2, 4, 2, 4, 15, 4, 5, 3, 4, 2, 7, 9, 5, 8,
     5, 7, 13, 5, 6, 5, 7, 7, 9, 9, 3, 9, 3, 1, 3, 4, 3, 9, 12, 1, 5, 9, 4, 10, 14, 6, 3, 5, 1, 5, 3, 6, 2])
 
-lbls = Cell.rep_each([1,2], [10, 90])
+lbls = Severo.rep_each([1,2], [10, 90])
 
 X = convert_counts(X)
 lbls = NamedArray(lbls, names(X,1))
@@ -65,7 +65,7 @@ end
         0.45551138123867, 0.53433311634786, 0.88879550022386, 0.79225415168002
     ]
 
-    de = Cell.find_markers(X, lbls, method=:wilcoxon)
+    de = Severo.find_markers(X, lbls, method=:wilcoxon)
     @test de[!,:pval] ≈ repeat(true_pvals, inner=2) # assumes 'de' is sorted by [feature,group]
 
     @test de == find_markers(X, lbls, method=:wilcoxon, selection=trues(size(sel)))

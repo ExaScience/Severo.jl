@@ -2,7 +2,7 @@
 
 __precompile__()
 
-module Cell
+module Severo
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optlevel"))
     @eval Base.Experimental.@optlevel 3
@@ -26,7 +26,7 @@ import Requires: @require
 try
     include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
 catch e
-    error("Cell.jl not properly configured, please run `Pkg.build(\"Cell\")`.")
+    error("Severo.jl not properly configured, please run `Pkg.build(\"Severo\")`.")
 end
 
 include("utils.jl")

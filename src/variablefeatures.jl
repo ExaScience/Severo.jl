@@ -60,12 +60,12 @@ function select_features_saunders(counts::SparseMatrixCSC{<:Integer}, norm::Spar
 end
 
 function select_dispersion(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_method=:width)
-    mu, disp = Cell.log_VMR(norm)
+    mu, disp = log_VMR(norm)
     nan2zero!(disp)
 end
 
 function select_meanvarplot(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_method=:width)
-    mu, disp = Cell.log_VMR(norm)
+    mu, disp = log_VMR(norm)
     mu = nan2zero!(mu)
     disp = nan2zero!(disp)
 
