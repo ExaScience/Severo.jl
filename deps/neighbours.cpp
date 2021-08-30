@@ -150,7 +150,7 @@ void FindNeighbours(double *data, int n, int d, int stride, int k, int q, bool i
 #endif
 }
 
-extern "C" void FindNeighboursEuclidian(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
+extern "C" void FindNeighboursEuclidean(double *data, int n, int d, int stride, int k, int q, int include_self, int *nn_index, double *distances) {
 	FindNeighbours<Euclidean>(data, n, d, stride, k, q, include_self != 0, nn_index, distances);
 }
 

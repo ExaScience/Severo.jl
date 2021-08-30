@@ -16,7 +16,7 @@ function ann!(nn_index::Matrix{Int32}, distances::Matrix{Float64}, ::Euclidean, 
     n,d = size(X)
     @assert stride(X,1) == 1
 
-    ccall(("FindNeighboursEuclidian", libcell), Cvoid,
+    ccall(("FindNeighboursEuclidean", libcell), Cvoid,
         (Ptr{Float64}, Cint, Cint, Cint, Cint, Cint, Cint, Ptr{Int32}, Ptr{Float64}),
         X, n, d, stride(X,2), k, ntables, include_self, nn_index, distances)
     nn_index, distances
