@@ -38,17 +38,39 @@ Cluster cells based on a neighbourhood graph.
 
 cluster assignment per cell
 """
-function cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true)
+cluster(SNN::NeighbourGraph; kw...) = cluster(default_rng(), SNN; kw...)
+
+"""
+    cluster(rng::AbstractRNG, SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nstarts=1, niterations=10) where T
+
+Cluster cells based on a neighbourhood graph.
+
+**Arguments**:
+
+    - `rng`: random number generator
+    - `SNN`: shared neighbours graph
+    - `algorithm`: clustering algorithm to use (louvain)
+    - `resolution`: parameters above 1 will lead to larger communities whereas below 1 lead to smaller ones
+    - `nstarts`: number of random starts
+    - `niterations`: maximum number of iterations per random start
+    - `group_singletons`: group singletons into nearest cluster, if false keeps singletons
+
+**Return values**:
+
+cluster assignment per cell
+"""
+function cluster(rng::AbstractRNG, SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nrandomstarts=10, niterations=10, verbose=false, group_singletons::Bool=true)
     if isa(algorithm, AbstractString)
         algorithm = Symbol(algorithm)
     end
 
     assignment = if algorithm == :louvaincpp
+        randomseed = rand(rng, Int32)
         modularity_cluster(SNN.array, algorithm=1, resolution=resolution,
-                nrandomstarts=nrandomstarts, niterations=niterations, verbose=verbose)
+                nrandomstarts=nrandomstarts, niterations=niterations, verbose=verbose, randomseed=randomseed)
     elseif algorithm == :louvain
         n = Network(SNN.array)
-        cl = louvain_multi(n, nrandomstarts, resolution=resolution, max_iterations=niterations, verbose=verbose)
+        cl = louvain_multi(rng, n, nrandomstarts, resolution=resolution, max_iterations=niterations, verbose=verbose)
         cl.nodecluster
     else
         error("unknown clustering algorithm: $algorithm")
