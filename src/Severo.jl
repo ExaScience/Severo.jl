@@ -22,6 +22,7 @@ const NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <
 const SparseVec = Union{SparseColumnView, SparseVector}
 
 import Requires: @require
+import Scratch: @get_scratch!
 
 try
     include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
@@ -42,7 +43,10 @@ include("datasets.jl")
 include("diffexpr.jl")
 include("printing.jl")
 
+dataset_cache = ""
+
 function __init__()
+    global dataset_cache = @get_scratch!("datasets")
     @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("visualization.jl")
 end
 

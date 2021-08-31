@@ -4,8 +4,6 @@ import HTTP
 import GZip
 import Tar
 
-data_location(collection::AbstractString="") = joinpath(@__DIR__, "..", "data", collection)
-
 abstract type DataSet end
 
 struct FileDataSet <: DataSet
@@ -223,7 +221,7 @@ function dataset(collection::AbstractString, dataset::AbstractString)
     end
 
     ds = col.datasets[idx]
-    path = joinpath(data_location(), col.short)
+    path = joinpath(dataset_cache, col.short)
 
     if ! ispath(path)
         mkdir(path)
