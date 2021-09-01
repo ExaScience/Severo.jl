@@ -1,4 +1,4 @@
-using Cell
+using Severo
 using DataFrames
 using HDF5
 import CategoricalArrays: CategoricalValue

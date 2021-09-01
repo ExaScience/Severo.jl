@@ -1,4 +1,4 @@
-using Cell
+using Severo
 using RCall
 using DataFrames
 using HDF5
@@ -79,9 +79,9 @@ end
 end
 
 function modularity(snn, lbls, resolution=0.5)
-  n = Cell.Network(snn)
-  c = Cell.Clustering(n, lbls, resolution)
-  Cell.modularity(c)
+  n = Severo.Network(snn)
+  c = Severo.Clustering(n, lbls, resolution)
+  Severo.modularity(c)
 end
 
 import HDF5: write
