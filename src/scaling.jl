@@ -251,9 +251,30 @@ function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::Strid
     mul!(C, S.mu, s, α, 1.0)
 end
 
+function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, Sr::CenteredMatrix, α::Number, β::Number)
+    Sl = adjS.parent
+    mul!(C, adjoint(Sl.A), Sr.A, α, β)
+    mul!(C, Sl.mu, adjoint(Sr.mu), -α*size(Sl,1), 1.0)
+    C
+end
+
 function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
-    X = (C.A .- C.mu')
-    convert(T, X)
+    X = convert(T, C.A)
+    X .-= C.mu'
+    X
+end
+
+function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:NamedCenteredMatrix}, Sr::NamedCenteredMatrix, α::Number, β::Number)
+    Sl = adjS.parent
+    mul!(C, adjoint(Sl.A.array), Sr.A.array, α, β)
+    mul!(C, Sl.mu.array, adjoint(Sr.mu.array), -α*size(Sl,1), 1.0)
+    C
+end
+
+function convert(::Type{T}, C::NamedCenteredMatrix) where {T<:Array}
+    X = convert(T, C.A.array)
+    X .-= C.mu.array'
+    X
 end
 
 function convert(::Type{<:NamedArray}, C::NamedCenteredMatrix)

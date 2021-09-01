@@ -12,6 +12,24 @@ struct LinearEmbedding
 end
 
 include("irlba.jl")
+include("mul.jl")
+
+function tssvd(A::AbstractMatrix{T}; nsv::Int=6, ritzvec::Bool=true, tol::Float64=0.0, maxiter::Int=1000, ncv::Int=2*nsv) where {T}
+    C = similar(A, (size(A,2), size(A,2)))
+    mul!(C, A', A)
+
+    # XXX should sqrt the tolerance probably
+    λ, ϕ = eigs(C, nev=nsv, ritzvec=ritzvec, tol=tol, maxiter=maxiter, ncv=ncv)
+    Sigma = sqrt.(λ)
+
+    U = if ritzvec
+        A * ϕ * inv(Diagonal(Sigma))
+    else
+        Matrix{T}(undef, size(A,1), 0)
+    end
+
+    SVD(U, Sigma, ϕ')
+end
 
 function _pca(X, npcs::Int64; algorithm=:arpack, kw...)
     m,n = size(X)
@@ -25,6 +43,8 @@ function _pca(X, npcs::Int64; algorithm=:arpack, kw...)
     S = if algorithm == :arpack
         S, nconv, niter, nmult, resid = svds(X; nsv=npcs, kw...)
         S
+    elseif algorithm == :tssvd
+        tssvd(X; nsv=npcs, kw...)
     elseif algorithm == :irlba
         irlba(X, npcs; kw...)
     else
