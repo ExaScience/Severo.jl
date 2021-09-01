@@ -14,10 +14,10 @@ sc = pyimport("scanpy")
 
 py"""
 def convert_matrix(i, p, x, dim, rn, cn):
-	from scipy.sparse import csc_matrix
-	from anndata import AnnData
-	X = csc_matrix((x, i, p), shape=dim)
-	return AnnData(X, {'row_names':rn}, {'col_names':cn}, dtype=X.dtype.name)
+  from scipy.sparse import csc_matrix
+  from anndata import AnnData
+  X = csc_matrix((x, i, p), shape=dim)
+  return AnnData(X, {'row_names':rn}, {'col_names':cn}, dtype=X.dtype.name)
 
 def variable_features(X):
    hvf = X.var.highly_variable
@@ -30,16 +30,16 @@ def set_idents(X, lbls):
   return X
 
 def de_to_df(X):
-	import pandas as pd
-	de = X.uns['rank_genes_groups']
-	frames = [pd.melt(pd.DataFrame.from_records(de[n]), var_name='group', value_name=n).set_index('group', append=True) for n in ["names", "logfoldchanges", "pvals", "pvals_adj"]]
-	df = pd.DataFrame.join(frames[0], frames[1:]).reset_index('group')
-	df.group = df.group.astype('int')
-	return df
+  import pandas as pd
+  de = X.uns['rank_genes_groups']
+  frames = [pd.melt(pd.DataFrame.from_records(de[n]), var_name='group', value_name=n).set_index('group', append=True) for n in ["names", "logfoldchanges", "pvals", "pvals_adj"]]
+  df = pd.DataFrame.join(frames[0], frames[1:]).reset_index('group')
+  df.group = df.group.astype('int')
+  return df
 """
 function matrix_to_py(X::NamedCountMatrix)
-	x = X.array
-	py"convert_matrix"(x.rowval .- 1, x.colptr .- 1, convert(Vector{Float32},x.nzval), size(X), names(X,1), names(X, 2))
+  x = X.array
+  py"convert_matrix"(x.rowval .- 1, x.colptr .- 1, convert(Vector{Float32},x.nzval), size(X), names(X,1), names(X, 2))
 end
 
 function CreateSeuratObject(X::PyObject; min_cells=3, min_features=200)
@@ -105,17 +105,17 @@ function RunUMAP(X::PyObject; dims=1:50)
 end
 
 function umap_coords(X::PyObject)
-  py"$X.obsm['X_umap']"
+  py"$(X).obsm['X_umap']"
 end
 
 function pd_to_df(df_pd)
     df= DataFrame()
     for col in df_pd.columns
-				df[!, col] = if col == "names"
-					convert(Vector{String}, getproperty(df_pd, col).values)
-				else
-					getproperty(df_pd, col).values
-				end
+        df[!, col] = if col == "names"
+          convert(Vector{String}, getproperty(df_pd, col).values)
+        else
+          getproperty(df_pd, col).values
+        end
     end
     df
 end
@@ -127,29 +127,29 @@ function FindAllMarkers(X::PyObject, lbls=nothing; only_pos=true, min_pct=0.25, 
 
   sc.tl.rank_genes_groups(X, "louvain", method="wilcoxon", tie_correct=true)
   df = py"de_to_df"(X)
-	pd_to_df(df)
+  pd_to_df(df)
 end
 
 @time_calls function py_pipeline(X)
   A = matrix_to_py(X)
-	data = CreateSeuratObject(A, min_cells=3, min_features=200)
-	data = FindVariableFeatures(data, selection_method="vst", nfeatures=2000)
-	hvf = VariableFeatures(data)
+  data = CreateSeuratObject(A, min_cells=3, min_features=200)
+  data = FindVariableFeatures(data, selection_method="vst", nfeatures=2000)
+  hvf = VariableFeatures(data)
 
-	Y = NormalizeData(data, normalization_method="LogNormalize", scale_factor=1e4)
+  Y = NormalizeData(data, normalization_method="LogNormalize", scale_factor=1e4)
 
-	data = ScaleData(Y, features=hvf)
-	data = RunPCA(data, npcs=150, features=hvf)
+  data = ScaleData(Y, features=hvf)
+  data = RunPCA(data, npcs=150, features=hvf)
 
-	data = FindNeighbors(data, dims=1:50)
-	data = FindClusters(data, resolution=0.5)
-	data = RunUMAP(data, dims=1:50)
+  data = FindNeighbors(data, dims=1:50)
+  data = FindClusters(data, resolution=0.5)
+  data = RunUMAP(data, dims=1:50)
 
-	idents = Idents(data)
+  idents = Idents(data)
   de = FindAllMarkers(Y, idents; only_pos=true, min_pct=0.25, logfc_threshold=0.25)
 
-	umap = umap_coords(data)
-	hvf, idents, umap, de
+  umap = umap_coords(data)
+  hvf, idents, umap, de
 end
 
 import HDF5: write
@@ -189,12 +189,16 @@ end
 
 for fname in ARGS
   dataset, _ = splitext(basename(fname))
-  println("Processing $dataset ($fname)")
 
-  h5open("$dataset.h5", "cw") do io
-    if !haskey(io, "py_t")
-      X = read_data(fname)
-      post_process(io, "py", py_pipeline(X))
+  try
+    h5open("$dataset.h5", "cw") do io
+      if !haskey(io, "py_t")
+        println("Processing $dataset ($fname)")
+        X = read_data(fname)
+        post_process(io, "py", py_pipeline(X))
+      end
     end
+  catch e
+      println(stderr, "Failed to process $fname")
   end
 end

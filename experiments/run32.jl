@@ -7,21 +7,21 @@ import Clustering: randindex, counts
 include("time_calls.jl")
 
 @time_calls function jl_pipeline(X::NamedCountMatrix, hvf_ref::Vector{String})
-	X = filter_counts(X, min_cells=3, min_features=200)
-	hvf = find_variable_features(X, 2000, method=:vst)
+    X = filter_counts(X, min_cells=3, min_features=200)
+    hvf = find_variable_features(X, 2000, method=:vst)
 
-	Y = normalize(X, scale_factor=1e4, method=:lognormalize, dtype=Float32)
+    Y = normalize(X, scale_factor=1e4, method=:lognormalize, dtype=Float32)
 
-	S = scale_features(Y[:,hvf_ref], scale_max=10)
-	em = embedding(S, 150, method=:pca, algorithm=:arpack)
-	snn = shared_nearest_neighbours(em, 20, dims=1:50, ntables=50)
-	lbls = cluster(snn, resolution=0.5)
-	res = umap(em, dims=1:50, metric=:ann)
-  @assert eltype(res) == Float32
+    S = scale_features(Y[:,hvf_ref], scale_max=10)
+    em = embedding(S, 150, method=:pca, algorithm=:arpack)
+    snn = shared_nearest_neighbours(em, 20, dims=1:50, ntables=50)
+    lbls = cluster(snn, resolution=0.5)
+    res = umap(em, dims=1:50, metric=:ann)
+    @assert eltype(res) == Float32
 
-  de = find_all_markers(Y, lbls; only_pos=true, min_pct=0.25, logfc_threshold=0.25, log=true)
+    de = find_all_markers(Y, lbls; only_pos=true, min_pct=0.25, logfc_threshold=0.25, log=true)
 
-	(names(hvf,1), lbls, res, de)
+    (names(hvf,1), lbls, res, de)
 end
 
 import HDF5: write
@@ -75,20 +75,23 @@ end
 
 for fname in ARGS
   dataset, _ = splitext(basename(fname))
-  println("Processing $dataset ($fname)")
+  try
+    h5open("$dataset.h5", "cw") do io
+      @assert haskey(io, "R_t")
+      hvf_R = read(io, "R_hvf")
 
-  X = read_data(fname)
-  h5open("$dataset.h5", "cw") do io
-    @assert haskey(io, "R_t")
-    hvf_R = read(io, "R_hvf")
-
-    if !haskey(io, "jl32_t")
-      t = @elapsed x = jl_pipeline(X, hvf_R)
-      if t < 100
-        println("short pipeline, running again")
-        x = jl_pipeline(X, hvf_R)
+      if !haskey(io, "jl32_t")
+        println("Processing $dataset ($fname)")
+        X = read_data(fname)
+        t = @elapsed x = jl_pipeline(X, hvf_R)
+        if t < 100
+          println("short pipeline, running again")
+          x = jl_pipeline(X, hvf_R)
+        end
+        post_process(io, "jl32", x)
       end
-      post_process(io, "jl32", x)
     end
+  catch e
+      println(stderr, "Failed to process $fname")
   end
 end
