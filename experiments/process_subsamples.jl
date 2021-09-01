@@ -2,12 +2,13 @@ using HDF5
 using CSV
 using DataFrames
 
-const steps_jl = ["filter_counts", "normalize", "find_variable_features", "scale_features", "embedding", "shared_nearest_neighbours", "cluster", "umap", "find_all_markers"]
+const steps_jl = ["filter_counts", "normalize_cells", "find_variable_features", "scale_features", "embedding", "shared_nearest_neighbours", "cluster", "umap", "find_all_markers"]
 const steps_R = ["CreateSeuratObject", "NormalizeData", "FindVariableFeatures", "ScaleData", "RunPCA", "FindNeighbors", "FindClusters", "RunUMAP", "FindAllMarkers"]
 
 function read_time(ds, prefix)
     k = read(ds, "$(prefix)_t/keys")
     v = read(ds, "$(prefix)_t/vals")
+    replace!(k, "normalize"=>"normalize_cells")
     Dict(zip(k,v))
 end
 

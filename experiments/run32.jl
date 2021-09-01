@@ -10,7 +10,7 @@ include("time_calls.jl")
     X = filter_counts(X, min_cells=3, min_features=200)
     hvf = find_variable_features(X, 2000, method=:vst)
 
-    Y = normalize(X, scale_factor=1e4, method=:lognormalize, dtype=Float32)
+    Y = normalize_cells(X, scale_factor=1e4, method=:lognormalize, dtype=Float32)
 
     S = scale_features(Y[:,hvf_ref], scale_max=10)
     em = embedding(S, 150, method=:pca, algorithm=:arpack)
