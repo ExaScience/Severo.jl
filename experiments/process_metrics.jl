@@ -19,13 +19,13 @@ for fname in filter(endswith("h5"), readdir())
         end
 
         h5open(fname, "r") do io
-            if haskey(io, "R_lbls")
-                lbls_ref = read(io, "R_lbls")
-                hvf_ref = read(io, "R_hvf")
+            if haskey(io, "R")
+                lbls_ref = read(io, "R/lbls")
+                hvf_ref = read(io, "R/hvf")
 
-                for prefix in filter(x->haskey(io, "$(x)_t"), ["jl", "jl32", "py"])
-                    lbls = read(io, "$(prefix)_lbls")
-                    hvf = read(io, "$(prefix)_hvf")
+                for prefix in filter(x->haskey(io, x), ["jl", "jl32", "py"])
+                    lbls = read(io, "$(prefix)/lbls")
+                    hvf = read(io, "$(prefix)/hvf")
                     ari, ri, _ = randindex(lbls_ref, lbls)
                     j = jaccard(hvf_ref, hvf)
                     push!(df, (dataset=name, it=it, size=size, implementation=prefix, ari=ari, ri=ri, jaccard=j))
