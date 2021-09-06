@@ -1,7 +1,7 @@
 # copyright imec - evaluation license - not for distribution
 
-import Arpack: svds
-import LinearAlgebra: svd, Diagonal
+import Arpack: svds, eigs
+import LinearAlgebra: svd, Diagonal, Hermitian
 import UMAP
 
 struct LinearEmbedding
@@ -15,8 +15,7 @@ include("irlba.jl")
 include("mul.jl")
 
 function tssvd(A::AbstractMatrix{T}; nsv::Int=6, ritzvec::Bool=true, tol::Float64=0.0, maxiter::Int=1000, ncv::Int=2*nsv) where {T}
-    C = similar(A, (size(A,2), size(A,2)))
-    mul!(C, A', A)
+    C = Hermitian(A'A)
 
     # XXX should sqrt the tolerance probably
     λ, ϕ = eigs(C, nev=nsv, ritzvec=ritzvec, tol=tol, maxiter=maxiter, ncv=ncv)

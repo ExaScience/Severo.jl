@@ -1,6 +1,7 @@
 # copyright imec - evaluation license - not for distribution
 
 import SparseArrays: SparseMatrixCSC, SparseVector, SparseColumnView, SparseMatrixCSCView, Adjoint, nonzeros, nonzeroinds, nnz, nzrange
+import LinearAlgebra: axpy!, mul!
 
 function mean_var(::Type{T}, x::Union{SparseColumnView,SparseVector}) where T
     n = length(x)
@@ -226,35 +227,59 @@ eltype(S::CenteredMatrix{P, T, R}) where {P,T,R} = P
 size(S::CenteredMatrix) = size(S.A)
 adjoint(S::CenteredMatrix) = Adjoint(S)
 
+_A_mu(S::CenteredMatrix) = S.A, S.mu
+_A_mu(S::NamedCenteredMatrix) = S.A.array, S.mu.array
+
 function mul!(C::StridedVector, S::CenteredMatrix, v::StridedVector, α::Number, β::Number)
-    mul!(C, S.A, v, α, β)
-    C .-= α * dot(S.mu, v)
+    A, mu = _A_mu(S)
+    mul!(C, A, v, α, β)
+    C .-= α * dot(mu, v)
     C
 end
 
 function mul!(C::StridedVector, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedVector, α::Number, β::Number)
     S = adjS.parent
-    mul!(C, adjoint(S.A), v,  α, β)
-    axpy!(-α * sum(v), S.mu, C)
+    A, mu = _A_mu(S)
+    mul!(C, adjoint(A), v,  α, β)
+    axpy!(-α * sum(v), mu, C)
 end
 
 function mul!(C::StridedMatrix, S::CenteredMatrix, v::StridedMatrix, α::Number, β::Number)
-    mul!(C, S.A, v, α, β)
-    C .-= α * S.mu' * v
+    A, mu = _A_mu(S)
+    mul!(C, A, v, α, β)
+    C .-= α * mu' * v
     C
 end
 
 function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, v::StridedMatrix, α::Number, β::Number)
     S = adjS.parent
-    mul!(C, adjoint(S.A), v,  α, β)
+    A, mu = _A_mu(S)
+    mul!(C, adjoint(A), v,  α, β)
     s = sum(v, dims=1)
-    mul!(C, S.mu, s, α, 1.0)
+    mul!(C, mu, s, α, 1.0)
 end
 
 function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, Sr::CenteredMatrix, α::Number, β::Number)
     Sl = adjS.parent
-    mul!(C, adjoint(Sl.A), Sr.A, α, β)
-    mul!(C, Sl.mu, adjoint(Sr.mu), -α*size(Sl,1), 1.0)
+    Al, mul = _A_mu(Sl)
+    Ar, mur = _A_mu(Sr)
+
+    # C = A'A - A'M - M'A + M'M
+
+    mul!(C, adjoint(Al), Ar, α, β) # A'A
+
+    q = sum(Ar, dims=1)
+    mul!(C, mul, q, -α, 1.0) # - M'A
+
+    q = if Sl !== Sr
+        sum(Al, dims=1)
+    else
+        q
+    end
+
+    axpy!(-size(Al,1), mul, q)
+    mul!(C, adjoint(q), adjoint(mur), -α, 1.0) # + (M'M - A'M)
+
     C
 end
 
@@ -262,13 +287,6 @@ function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
     X = convert(T, C.A)
     X .-= C.mu'
     X
-end
-
-function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:NamedCenteredMatrix}, Sr::NamedCenteredMatrix, α::Number, β::Number)
-    Sl = adjS.parent
-    mul!(C, adjoint(Sl.A.array), Sr.A.array, α, β)
-    mul!(C, Sl.mu.array, adjoint(Sr.mu.array), -α*size(Sl,1), 1.0)
-    C
 end
 
 function convert(::Type{T}, C::NamedCenteredMatrix) where {T<:Array}
