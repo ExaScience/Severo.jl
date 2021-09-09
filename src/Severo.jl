@@ -24,11 +24,8 @@ const SparseVec = Union{SparseColumnView, SparseVector}
 import Requires: @require
 import Scratch: @get_scratch!
 
-try
-    include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
-catch e
-    error("Severo.jl not properly configured, please run `Pkg.build(\"Severo\")`.")
-end
+using Severo_jll
+const BlasInt = Int64 # should move to Severo_jll
 
 include("utils.jl")
 include("input.jl")
