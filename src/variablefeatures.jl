@@ -113,7 +113,7 @@ Identification of highly variable features: find features that exhibit high cell
 
 The `nfeatures` top-ranked features
 """
-function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, dtype::Type{<:AbstractFloat}=Float64, kw...)
+@partial function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method=:vst, dtype::Type{<:AbstractFloat}=Float64, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
     end

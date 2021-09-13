@@ -40,7 +40,7 @@ Normalize count data with different methods:
 
 A labelled data matrix
 """
-function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1., dtype::Type{T}=Float64) where {T <: AbstractFloat}
+@partial function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1., dtype::Type{T}=Float64) where {T <: AbstractFloat}
     if isa(method, AbstractString)
         method = Symbol(method)
     end
