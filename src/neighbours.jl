@@ -13,6 +13,10 @@ function ann(rng::AbstractRNG, X::AbstractMatrix{T}, k::Int64, metric::SemiMetri
     ann!(rng, nn_index, distances, metric, X, k, include_self, ntables)
 end
 
+function ann(rng::AbstractRNG, X::AbstractMatrix{T}, k::Int64; metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where {T <: AbstractFloat}
+    ann(rng, X, k, metric, include_self, ntables)
+end
+
 function ann!(rng::AbstractRNG, nn_index::Matrix{Int32}, distances::Matrix{Float32}, ::Euclidean, X::StridedMatrix{Float32}, k::Int64, include_self::Bool, ntables::Int64)
     n,d = size(X)
     @assert stride(X,1) == 1

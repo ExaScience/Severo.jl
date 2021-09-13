@@ -28,6 +28,7 @@ using Severo_jll
 const BlasInt = Int64 # should move to Severo_jll
 
 include("utils.jl")
+include("metrics.jl")
 include("input.jl")
 include("filtering.jl")
 include("normalize.jl")
@@ -54,4 +55,5 @@ export normalize_cells, scale_features, find_variable_features
 export embedding, pca, umap, LinearEmbedding
 export nearest_neighbours, shared_nearest_neighbours, jaccard_index
 export cluster, prefilter_markers, find_markers, filter_rank_markers, find_all_markers
+export purity, agreement, alignment
 end # module
