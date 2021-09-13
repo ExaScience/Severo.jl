@@ -31,58 +31,60 @@ import Distributions: Poisson, rand
 end
 
 @testset "normalize_cells" begin
-    X = sparse(Int64[
-        0  0  0  3  0
-        0  1  0  0  6
-        5  0  0  0  0
-        3  0  0  0  0
-        0  0  6  2  0
-        0  0  0  0  0
-        0  0  0  0  2
-        0  3  0  0  0
-        0  0  0  0  3
-        2  0  0  0  0
-    ])
-    C = convert_counts(X)
-    C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
+    @testset "normalize64" begin
+        X = sparse(Int64[
+            0  0  0  3  0
+            0  1  0  0  6
+            5  0  0  0  0
+            3  0  0  0  0
+            0  0  6  2  0
+            0  0  0  0  0
+            0  0  0  0  2
+            0  3  0  0  0
+            0  0  0  0  3
+            2  0  0  0  0
+        ])
+        C = convert_counts(X)
+        C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
 
-    Q = normalize_cells(C; method=:relativecounts)
-    @test eltype(Q) == Float64
-    @test all(sum(Q, dims=2) .≈ 1.0)
-    @test names(Q,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-8", "cell-9"]
-    @test names(Q,2) == [ "gene-1", "gene-2", "gene-4", "gene-5"]
+        Q = normalize_cells(C; method=:relativecounts)
+        @test eltype(Q) == Float64
+        @test all(sum(Q, dims=2) .≈ 1.0)
+        @test names(Q,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-8", "cell-9"]
+        @test names(Q,2) == [ "gene-1", "gene-2", "gene-4", "gene-5"]
 
-    Q2 = normalize_cells(C; method=:lognormalize)
-    @test eltype(Q2) == Float64
-    all(Q2 .≈ log1p.(Q))
+        Q2 = normalize_cells(C; method=:lognormalize)
+        @test eltype(Q2) == Float64
+        all(Q2 .≈ log1p.(Q))
 
-    Q = normalize_cells(C; method="relativecounts", scale_factor=10.)
-    @test eltype(Q) == Float64
-    @test all(sum(Q, dims=2) .≈ 10.0)
-end
+        Q = normalize_cells(C; method="relativecounts", scale_factor=10.)
+        @test eltype(Q) == Float64
+        @test all(sum(Q, dims=2) .≈ 10.0)
+    end
 
-@testset "normalize32" begin
-    X = sparse(Int64[
-        0  0  0  3  0
-        0  1  0  0  6
-        5  0  0  0  0
-        3  0  0  0  0
-        0  0  6  2  0
-        0  0  0  0  0
-        0  0  0  0  2
-        0  3  0  0  0
-        0  0  0  0  3
-        2  0  0  0  0
-    ])
-    C = convert_counts(X)
-    C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
+    @testset "normalize32" begin
+        X = sparse(Int64[
+            0  0  0  3  0
+            0  1  0  0  6
+            5  0  0  0  0
+            3  0  0  0  0
+            0  0  6  2  0
+            0  0  0  0  0
+            0  0  0  0  2
+            0  3  0  0  0
+            0  0  0  0  3
+            2  0  0  0  0
+        ])
+        C = convert_counts(X)
+        C = filter_counts(C; min_features=1, min_cells=2, min_umi=2)
 
-    Q = normalize_cells(C; method=:relativecounts, dtype=Float32)
-    @test eltype(Q) == Float32
+        Q = normalize_cells(C; method=:relativecounts, dtype=Float32)
+        @test eltype(Q) == Float32
 
-    Q2 = normalize_cells(C; method=:lognormalize, dtype=Float32)
-    @test eltype(Q2) == Float32
+        Q2 = normalize_cells(C; method=:lognormalize, dtype=Float32)
+        @test eltype(Q2) == Float32
 
-    Q = normalize_cells(C; method="relativecounts", scale_factor=10., dtype=Float32)
-    @test eltype(Q) == Float32
+        Q = normalize_cells(C; method="relativecounts", scale_factor=10., dtype=Float32)
+        @test eltype(Q) == Float32
+    end
 end

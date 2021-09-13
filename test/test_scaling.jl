@@ -6,51 +6,53 @@ import LinearAlgebra: mul!
 import Statistics
 
 @testset "scaling" begin
-    X = sparse(Int64[
-        0  0  0  3  0
-        0  1  0  0  6
-        5  0  0  0  0
-        3  0  0  0  0
-        0  0  6  2  0
-        0  0  0  0  0
-        0  0  0  0  2
-        0  3  0  0  0
-        0  0  0  0  3
-        2  0  0  0  0
-    ])
-    C = convert_counts(X)
+    @testset "scaling64" begin
+        X = sparse(Int64[
+            0  0  0  3  0
+            0  1  0  0  6
+            5  0  0  0  0
+            3  0  0  0  0
+            0  0  6  2  0
+            0  0  0  0  0
+            0  0  0  0  2
+            0  3  0  0  0
+            0  0  0  0  3
+            2  0  0  0  0
+        ])
+        C = convert_counts(X)
 
-    S = scale_features(C)
-    @test eltype(S) == Float64
-    @test names(S,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-6", "cell-7", "cell-8", "cell-9", "cell-10"]
-    @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
+        S = scale_features(C)
+        @test eltype(S) == Float64
+        @test names(S,1) == ["cell-1", "cell-2", "cell-3", "cell-4", "cell-5", "cell-6", "cell-7", "cell-8", "cell-9", "cell-10"]
+        @test names(S,2) == [ "gene-1", "gene-2", "gene-3", "gene-4", "gene-5"]
 
-    X_mu, X_std = Severo.mean_std(X)
-    @test eltype(X_mu) == Float64 && eltype(X_std) == Float64
-    @test (X_mu ./ X_std) ≈ S.mu
-    @test Matrix((X .- X_mu') ./ X_std') ≈ convert(Matrix, S)
-end
+        X_mu, X_std = Severo.mean_std(X)
+        @test eltype(X_mu) == Float64 && eltype(X_std) == Float64
+        @test (X_mu ./ X_std) ≈ S.mu
+        @test Matrix((X .- X_mu') ./ X_std') ≈ convert(Matrix, S)
+    end
 
-@testset "scaling32" begin
-    X = sparse(Int64[
-        0  0  0  3  0
-        0  1  0  0  6
-        5  0  0  0  0
-        3  0  0  0  0
-        0  0  6  2  0
-        0  0  0  0  0
-        0  0  0  0  2
-        0  3  0  0  0
-        0  0  0  0  3
-        2  0  0  0  0
-    ])
-    C = convert_counts(X)
+    @testset "scaling32" begin
+        X = sparse(Int64[
+            0  0  0  3  0
+            0  1  0  0  6
+            5  0  0  0  0
+            3  0  0  0  0
+            0  0  6  2  0
+            0  0  0  0  0
+            0  0  0  0  2
+            0  3  0  0  0
+            0  0  0  0  3
+            2  0  0  0  0
+        ])
+        C = convert_counts(X)
 
-    S = scale_features(C, dtype=Float32)
-    @test eltype(S) == Float32
+        S = scale_features(C, dtype=Float32)
+        @test eltype(S) == Float32
 
-    X_mu, X_std = Severo.mean_std(Float32, X)
-    @test eltype(X_mu) == Float32 && eltype(X_std) == Float32
+        X_mu, X_std = Severo.mean_std(Float32, X)
+        @test eltype(X_mu) == Float32 && eltype(X_std) == Float32
+    end
 end
 
 @testset "centered matrix" begin
@@ -97,7 +99,6 @@ end
         @test mul!(r, C', y, 2.0, 1.0) ≈ (2*Q'*y + r0)
     end
 end
-
 
 @testset "mean_var sparse" begin
     x = SparseVector(100,
