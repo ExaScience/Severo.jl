@@ -6,6 +6,7 @@ using Severo
 import SparseArrays: SparseMatrixCSC
 import NamedArrays: NamedArray, names
 
+@testset "diffex" begin
 X = SparseMatrixCSC(100, 20,
     [1, 20, 40, 57, 80, 99, 109, 117, 133, 152, 162, 173, 182, 195, 210, 219, 230, 248, 269, 289, 306],
     [3, 4, 5, 10, 11, 17, 18, 26, 31, 34, 37, 38, 40, 46, 50, 54, 66, 74, 86, 2, 3, 4, 6, 8, 11, 16,
@@ -76,4 +77,4 @@ end
     @test de[!,:feature] == repeat(names(X,2), inner=2)[vs] # assumes 'de' is sorted by [feature,group]
     @test de[!,:group] == repeat([1,2], outer=length(true_pvals))[vs] # assumes 'de' is sorted by [feature,group]
 end
-
+end

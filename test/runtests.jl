@@ -2,6 +2,7 @@
 
 using Severo, Test
 
+@testset verbose=true "all" begin
 include("test_utils.jl")
 include("test_input.jl")
 include("test_scaling.jl")
@@ -10,3 +11,4 @@ include("test_ranksum.jl")
 include("test_nn.jl")
 include("test_irlba.jl")
 include("test_metrics.jl")
+end
