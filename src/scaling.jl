@@ -223,7 +223,7 @@ NamedCenteredMatrix{P,T,R} = CenteredMatrix{P,T,R} where {P, T <: NamedArray, R 
 
 import Base: eltype, size, adjoint, show, IO, convert
 import LinearAlgebra: mul!, dot, axpy!
-eltype(S::CenteredMatrix{P, T, R}) where {P,T,R} = P
+eltype(::CenteredMatrix{P, T, R}) where {P,T,R} = P
 size(S::CenteredMatrix) = size(S.A)
 adjoint(S::CenteredMatrix) = Adjoint(S)
 
@@ -284,13 +284,15 @@ function mul!(C::StridedMatrix, adjS::Adjoint{<:Any, <:CenteredMatrix}, Sr::Cent
 end
 
 function convert(::Type{T}, C::CenteredMatrix) where {T<:Array}
-    X = convert(T, C.A)
+    P = eltype(C)
+    X = T{P}(C.A)
     X .-= C.mu'
     X
 end
 
 function convert(::Type{T}, C::NamedCenteredMatrix) where {T<:Array}
-    X = convert(T, C.A.array)
+    P = eltype(C)
+    X = T{P}(C.A.array)
     X .-= C.mu.array'
     X
 end
