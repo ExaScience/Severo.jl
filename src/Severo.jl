@@ -27,6 +27,7 @@ import Scratch: @get_scratch!
 using Severo_jll
 const BlasInt = Int64 # should move to Severo_jll
 
+include("macros.jl")
 include("utils.jl")
 include("metrics.jl")
 include("input.jl")

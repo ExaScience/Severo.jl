@@ -185,7 +185,7 @@ function umap(X::NamedMatrix, ncomponents::Int64=2; dims=:, kw...)
     NamedArray(coords, (rownames, latentnames), (rowdim, :latent))
 end
 
-function embedding(X, ncomponents::Int64; method=:pca, kw...)
+@partial function embedding(X, ncomponents::Int64=50; method=:pca, kw...)
     if isa(method, AbstractString)
         method = Symbol(method)
     end

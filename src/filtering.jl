@@ -36,7 +36,7 @@ Filter a count matrix, removing features for which the metrics fall below the gi
 
 The filtered matrix with features removed
 """
-function filter_features(A::NamedCountMatrix; min_cells=0)
+@partial function filter_features(A::NamedCountMatrix; min_cells=0)
     counts, FI = filter_features(A.array; min_cells=min_cells)
     barcodes, features = names(A)
     NamedArray(counts, (barcodes, features[FI]), A.dimnames)
@@ -58,7 +58,7 @@ Filter a labeled count matrix, removing cells for which the metrics fall below t
 
 The filtered, labeled matrix with cells removed
 """
-function filter_cells(A::NamedCountMatrix; min_features=0, min_feature_count=0, min_umi=0)
+@partial function filter_cells(A::NamedCountMatrix; min_features=0, min_feature_count=0, min_umi=0)
     counts, CI = filter_cells(A.array; min_features=min_features, min_feature_count=min_feature_count, min_umi=min_umi)
     barcodes, features = names(A)
     NamedArray(counts, (barcodes[CI], features), A.dimnames)
@@ -83,7 +83,7 @@ First cells are removed using `filter_cells` and then features using `filter_fea
 
 The filtered, labeled matrix with cells and features removed
 """
-function filter_counts(A::NamedCountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
+@partial function filter_counts(A::NamedCountMatrix; min_cells=0, min_features=0, min_feature_count=0, min_umi=0)
     counts, CI = filter_cells(A.array; min_features=min_features, min_feature_count=min_feature_count, min_umi=min_umi)
     counts, FI = filter_features(counts; min_cells=min_cells)
     barcodes, features = names(A)
