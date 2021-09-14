@@ -70,7 +70,7 @@ function select_meanvarplot(norm::SparseMatrixCSC{<:Real}; num_bins=20, binning_
     mu = nan2zero!(mu)
     disp = nan2zero!(disp)
 
-    breaks, bins = cut(mu, num_bins; method=binning_method)
+    _, bins = cut(mu, num_bins; method=binning_method)
     bin_mean, bin_std = mean_std(disp, bins, num_bins)
 
     @inbounds @simd for i = 1:length(disp)
@@ -129,9 +129,8 @@ function find_variable_features(counts::NamedCountMatrix, nfeatures=2000; method
         end
 
         if method == :saunders
-            var_thresh = get(kw, :var_thresh, 0.1)
             alpha_thresh = get(kw, :alpha_thresh, 0.1)
-            select_features_saunders(counts.array, norm; alpha_thresh=alpha_thresh, var_thresh=var_thresh)
+            select_features_saunders(counts.array, norm; alpha_thresh=alpha_thresh)
         elseif method == :dispersion
             num_bins = get(kw, :num_bins, 20)
             binning_method = get(kw, :binning_method, :width)
