@@ -3,6 +3,7 @@
 function show(io::IO, em::LinearEmbedding; dims::AbstractVector{<:Integer}=1:5, nfeatures::Integer=20)
     loadings = em.basis
     nfeatures = min(nfeatures, size(loadings, 1))
+    dims = intersect(dims, axes(loadings, 2))
 
     for dim in dims
         x = loadings.array[:,dim]
