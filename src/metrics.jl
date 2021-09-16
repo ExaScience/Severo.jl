@@ -23,8 +23,16 @@ end
 
 _jaccard_index(a::IntegerArray, b::IntegerArray) = (i = length(intersect(a,b)); i / (length(a) + length(b) - i))
 
+function _agreement(rng::AbstractRNG, nn_X::IntegerArray, Y::AbstractMatrix, k::Int64, metric::SemiMetric)
+    nn_Y, _ = ann(rng, Y, k, metric)
+    mean(map(_jaccard_index, eachrow(nn_X), eachrow(nn_Y)))
+end
+
+_agreement(rng::AbstractRNG, nn_X::IntegerArray, Y::NamedArray, k::Int64, metric::SemiMetric) = _agreement(rng, nn_X, Y.array, k, metric)
+_agreement(rng::AbstractRNG, nn_X::IntegerArray, Y::LinearEmbedding, k::Int64, metric::SemiMetric) = _agreement(rng, nn_X, Y.coordinates, k, metric)
+
 """
-    agreement(rng::AbstractRNG, X::AbstractMatrix, Y::AbstractMatrix; k::Int64)
+    agreement(rng::AbstractRNG, X::AbstractMatrix, Y::Union{AbstractMatrix, LinearEmbedding}; k::Int64)
 
 A metric for quantifying how much a transformation/factorization distorts the geometry of the
 original dataset. The greater the agreement, the less distortion of geometry there is.
@@ -43,14 +51,13 @@ The Jaccard index is used to quantify similarity, and is the final metric averag
 **Return values**:
 The agreement score
 """
-function agreement(rng::AbstractRNG, X::AbstractMatrix, Y::AbstractMatrix; k::Int64=15)
-    nn_X, _ = ann(rng, X, k)
-    nn_Y, _ = ann(rng, Y, k)
-    mean(map(_jaccard_index, eachrow(nn_X), eachrow(nn_Y)))
+function agreement(rng::AbstractRNG, X::AbstractMatrix, Y::Union{AbstractMatrix, LinearEmbedding}; k::Int64=15, metric::SemiMetric=Euclidean())
+    nn_X, _ = ann(rng, X, k, metric)
+    _agreement(rng, nn_X, Y, k, metric)
 end
 
 """
-    agreement(rng::AbstractRNG, X::AbstractMatrix, Ys::AbstractMatrix...; k::Int64)
+    agreement(rng::AbstractRNG, X::Union{AbstractMatrix, LinearEmbedding}, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64)
 
 A metric for quantifying how much a transformation/factorization distorts the geometry of the
 original dataset. The greater the agreement, the less distortion of geometry there is.
@@ -69,16 +76,23 @@ The Jaccard index is used to quantify similarity, and is the final metric averag
 **Return values**:
 The agreement score
 """
-function agreement(rng::AbstractRNG, X::AbstractMatrix, Ys::AbstractMatrix...; k::Int64=15)
-    nn_X, _ = ann(rng, X, k)
+function agreement(rng::AbstractRNG, X::AbstractMatrix, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64=15, metric::SemiMetric=Euclidean())
+    nn_X, _ = ann(rng, X, k, metric)
     map(Ys) do Y
-        nn_Y, _ = ann(rng, Y, k)
-        mean(map(_jaccard_index, eachrow(nn_X), eachrow(nn_Y)))
+        _agreement(rng, nn_X, Y, k, metric)
     end
 end
 
+function agreement(rng::AbstractRNG, X::NamedArray, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64=15, metric::SemiMetric=Euclidean())
+    agreement(rng, X.array, Ys...; k=k, metric=metric)
+end
+
+function agreement(rng::AbstractRNG, X::LinearEmbedding, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64=15, metric::SemiMetric=Euclidean())
+    agreement(rng, X.coordinates, Ys...; k=k, metric=metric)
+end
+
 """
-    agreement(X::AbstractMatrix, Ys::AbstractMatrix...; k::Int64)
+    agreement(X::Union{AbstractMatrix, LinearEmbedding}, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64)
 
 A metric for quantifying how much a transformation/factorization distorts the geometry of the
 original dataset. The greater the agreement, the less distortion of geometry there is.
@@ -96,7 +110,7 @@ The Jaccard index is used to quantify similarity, and is the final metric averag
 **Return values**:
 The agreement score
 """
-agreement(X::AbstractMatrix, Ys::AbstractMatrix...; k::Int64=15) = agreement(default_rng(), X, Ys...; k=k)
+agreement(X::Union{AbstractMatrix, LinearEmbedding}, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64=15, metric::SemiMetric=Euclidean()) = agreement(default_rng(), X, Ys...; k=k, metric=metric)
 
 function subsample_datasets(rng::AbstractRNG, min_cells, datasets)
     samples = similar(first(datasets), min_cells * length(datasets))
@@ -163,6 +177,10 @@ function alignment(rng::AbstractRNG, X::AbstractMatrix, datasets::AbstractVector
     end
 end
 
+function alignment(rng::AbstractRNG, X::NamedArray, datasets::AbstractVector{T}...; k::Union{Nothing,Int64}=nothing) where T
+    alignment(rng, X.array, datasets...; k=k)
+end
+
 """
     alignment(X::AbstractMatrix, datasets::AbstractVector{T}...; k::Union{Nothing,Int64}=nothing) where T
 
@@ -178,7 +196,7 @@ If the datasets are well-aligned, we would expect that each cells’ nearest nei
 
 **Arguments**:
 
-    - `X`: low dimensional embedding
+    - `X`: low dimensional embedding of the aligned datasets
     - `datasets`: the split into datasets
     - `k`: number of neighbours to find. By default: 1% of the total number of cells, capped by a minimum of 10 and total number of samples drawn
 
