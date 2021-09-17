@@ -3,6 +3,7 @@
 import DataFrames: DataFrame, sort!, select!, groupby, combine, Not
 import SparseArrays: nonzeros, nonzeroinds
 import Distributions: TDist
+import StatsBase: counts
 
 include("ranksum.jl")
 

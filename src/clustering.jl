@@ -23,7 +23,7 @@ Cluster cells based on a neighbourhood graph.
 
 cluster assignment per cell
 """
-cluster(SNN::NeighbourGraph; kw...) = cluster(default_rng(), SNN; kw...)
+@partial cluster(SNN::NeighbourGraph; kw...) = cluster(default_rng(), SNN; kw...)
 
 """
     cluster(rng::AbstractRNG, SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nstarts=1, niterations=10) where T

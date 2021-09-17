@@ -29,7 +29,6 @@ const BlasInt = Int64 # should move to Severo_jll
 
 include("macros.jl")
 include("utils.jl")
-include("metrics.jl")
 include("input.jl")
 include("filtering.jl")
 include("normalize.jl")
@@ -41,6 +40,7 @@ include("clustering.jl")
 include("datasets.jl")
 include("diffexpr.jl")
 include("printing.jl")
+include("metrics.jl")
 
 dataset_cache = ""
 

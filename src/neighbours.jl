@@ -103,6 +103,7 @@ between nearest neighbour sets, and is defined as the size of the intersection d
 of the union. "0" indicating no overlap and "1" indicating full overlap.
 
 **Arguments**:
+
     - `nn`: a nearest neighbour graph
     - `prune`: cutoff for the Jaccard index, edges with values below this cutoff are removed from the resulting graph
 
@@ -125,6 +126,7 @@ between nearest neighbour sets, and is defined as the size of the intersection d
 of the union. "0" indicating no overlap and "1" indicating full overlap.
 
 **Arguments**:
+
     - `nn`: a nearest neighbour graph
     - `k`: maximum number of neighbours
     - `prune`: cutoff for the Jaccard index, edges with values below this cutoff are removed from the resulting graph
@@ -231,7 +233,7 @@ Compute a k-nearest neighbours graph based on a linear embedding
 
 A k-nearest neighbours graph represented by a sparse matrix. k-neighbours are stored as rows for each cell (cols)
 """
-@partial nearest_neighbours(em::LinearEmbedding, k::Int64; dims=:, kw...) = nearest_neighbours(default_rng(), em, k; dims=dims, kw...)
+nearest_neighbours(em::LinearEmbedding, k::Int64; dims=:, kw...) = nearest_neighbours(default_rng(), em, k; dims=dims, kw...)
 
 """
     shared_nearest_neighbours(rng::AbstractRNG, X::NamedArray{T,2}, k::Int64; dims=:, metric::SemiMetric=Euclidean(), include_self::Bool=true, ntables::Int64=2*size(X,2)) where T
@@ -332,4 +334,4 @@ the size of the intersection divided by the size of the union. "0" indicating no
 A shared nearest neighbours graph represented by a sparse matrix. Weights of the edges indicate similarity of
 the neighbourhoods of the cells as computed with the Jaccard index.
 """
-@partial shared_nearest_neighbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neighbours(default_rng(), em, k; kw...)
+shared_nearest_neighbours(em::LinearEmbedding, k::Int64; kw...) = shared_nearest_neighbours(default_rng(), em, k; kw...)
