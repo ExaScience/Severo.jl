@@ -77,15 +77,15 @@ function counting_sort(v::AbstractVector{<:Integer}, M::Integer)
 end
 
 function relabel!(labels::AbstractVector{<:Integer}, M::Integer)
-	new_labels = zeros(Int64, M)
-	id = 1
-	for (i,c) in enumerate(labels)
-		if new_labels[c] == 0
-			c = new_labels[c] = id
-			id += 1
-		else
-			c = new_labels[c]
-		end
+    new_labels = zeros(Int64, M)
+    id = 1
+    for (i,c) in enumerate(labels)
+        if new_labels[c] == 0
+            c = new_labels[c] = id
+            id += 1
+        else
+            c = new_labels[c]
+        end
 
         labels[i] = c
     end
@@ -160,44 +160,44 @@ function rep_each(x::AbstractVector{Tv}, each::AbstractVector{Ti}) where {Tv, Ti
 end
 
 function tiedrank(x::AbstractVector)
-	n = length(x)
-	J = sortperm(x)
+    n = length(x)
+    J = sortperm(x)
 
-	rk = zeros(size(J))
-	i = 1
-	while i <= n
-		j = i
-		@inbounds while (j < n) && x[J[j]] == x[J[j+1]]
-			j += 1
-		end
+    rk = zeros(size(J))
+    i = 1
+    while i <= n
+        j = i
+        @inbounds while (j < n) && x[J[j]] == x[J[j+1]]
+            j += 1
+        end
 
-		@inbounds for k in i:j
-			rk[J[k]] = (i + j) / 2.
-		end
+        @inbounds for k in i:j
+            rk[J[k]] = (i + j) / 2.
+        end
 
-		i = j + 1
-	end
+        i = j + 1
+    end
 
-	rk
+    rk
 end
 
-# import Base: findmax
-# function findmax(f, itr)
-# 	r = iterate(itr)
-# 	r === nothing && error("empty collection")
-# 	m, state = r
-# 	f_m = f(m)
-# 	while true
-# 		r = iterate(itr, state)
-# 		r === nothing && break
-# 		x, state = r
-# 		f_x = f(x)
-# 		if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
-# 			m, f_m = x, f_x
-# 		end
-# 	end
-# 	(f_m, m)
-# end
+import Base: findmax
+function myfindmax(f, itr)
+    r = iterate(itr)
+    r === nothing && error("empty collection")
+    m, state = r
+    f_m = f(m)
+    while true
+        r = iterate(itr, state)
+        r === nothing && break
+        x, state = r
+        f_x = f(x)
+        if isless(f_m, f_x) || (isequal(f_m, f_x) && x < m)
+            m, f_m = x, f_x
+        end
+    end
+    (f_m, m)
+end
 
 import LinearAlgebra: SVD
 function svd_flip!(S::SVD)
