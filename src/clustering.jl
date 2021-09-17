@@ -5,21 +5,6 @@ import StatsBase
 
 include("modularity.jl")
 
-function modularity_cluster(SNN::SparseMatrixCSC{Float64, Int64}; modularity=1, resolution=0.8, algorithm=1,
-        randomseed=0, nrandomstarts=10, niterations=10, verbose=true)
-    m,n = size(SNN)
-
-    assignment = Vector{Int32}(undef, max(m,n));
-    ccall(("ModularityClustering", libcell), Cvoid,
-        (Ptr{Int64}, Ptr{Int64}, Ptr{Float64}, Int32, Int32, Int64,
-        Int32, Float64, Int32, Int32, Int32, Int32, Bool, Ptr{Int32}),
-        getcolptr(SNN), rowvals(SNN), nonzeros(SNN), m, n, nnz(SNN),
-        modularity, resolution, algorithm, nrandomstarts, niterations,
-        randomseed, verbose, assignment)
-
-    Int64.(assignment .+ 1)
-end
-
 """
     cluster(SNN::NeighbourGraph; algorithm=:louvain, resolution=0.8, nstarts=1, niterations=10) where T
 
@@ -64,11 +49,7 @@ function cluster(rng::AbstractRNG, SNN::NeighbourGraph; algorithm=:louvain, reso
         algorithm = Symbol(algorithm)
     end
 
-    assignment = if algorithm == :louvaincpp
-        randomseed = rand(rng, Int32)
-        modularity_cluster(SNN.array, algorithm=1, resolution=resolution,
-                nrandomstarts=nrandomstarts, niterations=niterations, verbose=verbose, randomseed=randomseed)
-    elseif algorithm == :louvain
+    assignment = if algorithm == :louvain
         n = Network(SNN.array)
         cl = louvain_multi(rng, n, nrandomstarts, resolution=resolution, max_iterations=niterations, verbose=verbose)
         cl.nodecluster
