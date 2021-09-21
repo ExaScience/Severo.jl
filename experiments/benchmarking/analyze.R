@@ -121,6 +121,27 @@ P <- X %>% dplyr::group_by(hvf, size, it, implementation) %>% dplyr::mutate(tota
     dplyr::transmute(percent_markers=FindAllMarkers/total, percent_umap=RunUMAP/total, total=total, markers=FindAllMarkers, umap=RunUMAP) %>% dplyr::ungroup()
 ggplot(P, aes(x=size, y=percent_umap, fill=implementation)) + geom_boxplot()
 
+Q <- X %>% dplyr::filter(implementation %in% c("jl", "jl_opt"), step %in% c("RunPCA", "FindAllMarkers"))%>%
+    dplyr::mutate(implementation = factor(implementation, levels=c("jl", "jl_opt"), labels=c("original", "improved")), size = round_size(size)) %>%
+    dplyr::select(-clusters) %>%
+    dplyr::group_by(size, step, implementation) %>%
+        dplyr::summarize(mu=median(time, na.rm=T)) %>%
+        dplyr::ungroup(implementation) %>%
+        tidyr::pivot_wider(names_from=implementation, values_from=mu) %>%
+            dplyr::transmute(speedup=original/improved) %>%
+        tidyr::pivot_longer(cols=c(speedup), names_to="implementation", values_to="speedup") %>%
+    dplyr::ungroup()
+
+ggplot(Q, aes(x=size,y=speedup, fill=implementation, color=implementation)) +
+    geom_point(position=pd) +
+    xlab("Number of cells") +
+    ylab("Speedup") +
+    x_scale +
+    guides(x =  guide_axis(angle = 45)) +
+    scale_y_continuous(breaks=c(2,3,4,5,6, 7, 8)) +
+    theme(legend.position = "none") +
+    facet_wrap(~step, scales="free_y", ncol=1)
+
 X1 <- read.csv("ari_nohvf.csv")
 X2 <- read.csv("ari_hvf.csv")
 XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2))
