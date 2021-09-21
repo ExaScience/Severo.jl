@@ -42,7 +42,6 @@ FindAllMarkers(data::RObject; only_pos=true, min_pct=0.25, logfc_threshold=0.25)
 
 @time_calls function R_pipeline(A)
 	data = CreateSeuratObject(A, min_cells=3, min_features=200)
-  println(data)
 	data = NormalizeData(data, normalization_method="LogNormalize", scale_factor=1e4)
 	data = FindVariableFeatures(data, selection_method="vst", nfeatures=2000)
 
