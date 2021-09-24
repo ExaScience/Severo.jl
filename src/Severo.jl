@@ -25,7 +25,11 @@ import Requires: @require
 import Scratch: @get_scratch!
 
 using Severo_jll
-const BlasInt = Int64 # should move to Severo_jll
+try
+    include(joinpath(dirname(@__DIR__), "deps","deps.jl"))
+catch e
+    error("Severo.jl not properly configured, please run `Pkg.build(\"Severo\")`.")
+end
 
 include("macros.jl")
 include("utils.jl")
