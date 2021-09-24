@@ -9,7 +9,7 @@ to minimize hardware resources such as memory while maximizing performance throu
 
 The package provides a toolbox of different algorithms and statistical methods from which the user can pick and choose.
 
-Please see the [documentation](https://exascience.github.io/Severo.jl/stable/) for instructions and examples.
+Please see the [documentation](https://exascience.github.io/Severo.jl/dev/) for instructions and examples.
 
 ## Prerequisites
 
