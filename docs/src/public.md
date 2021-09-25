@@ -1,6 +1,6 @@
 # Public Documentation
 
-Documentation for `Cell.jl`'s public interface.
+Documentation for `Severo.jl`'s public interface.
 
 See the Internals section of the manual for internal package docs covering all submodules.
 
@@ -19,6 +19,6 @@ Pages = ["public.md"]
 ## Public Interface
 
 ```@autodocs
-Modules = [Cell]
+Modules = [Severo]
 Order   = [:function, :type]
 ```

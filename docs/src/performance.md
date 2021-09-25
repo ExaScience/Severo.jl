@@ -2,7 +2,7 @@
 
 ## PBMC 3K
 
-|    Function   | `Cell.jl` | Seurat | Speedup |
+|    Function   | `Severo.jl` | Seurat | Speedup |
 |:--------------|:----------|:------:|:-------:|
 | filter_counts |  0.066542 |  0.434 | 6.71x   |
 | normalize     |  0.06     |  0.212 | 3.53x   |
@@ -10,9 +10,9 @@
 | scale(hvf)    |  0.020628 |  2.66  | 128x   |
 | pca           |  0.123401 |  6.54  | 52.9x   |
 
-## 1M nn cut
+## 1.3M brain cells (10X)
 
-|    Function   | `Cell.jl` | Seurat | Speedup |
+|    Function   | `Severo.jl` | Seurat | Speedup |
 |:--------------|:----------|:-------:|:-----:|
 | filter_counts |  74.04964 | 1490.6  | 20x   |
 | normalize     |  72.24885 | 1844.9  | 25x   |

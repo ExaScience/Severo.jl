@@ -25,5 +25,5 @@ makedocs(
 )
 
 deploydocs(;
-    repo="github.imec.be/haber63/singlecell.git"
+    repo="github.com/ExaScience/Severo.jl"
 )

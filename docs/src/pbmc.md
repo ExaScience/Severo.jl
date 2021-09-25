@@ -23,7 +23,7 @@ The `read_10X` function reads the data from the cellranger 10X pipeline and retu
 detected for each feature/gene (columns) and each cell (rows).
 
 ```julia
-using Cell
+using Severo
 X = read_10X("pbmc3k/")
 ```
 
@@ -34,12 +34,12 @@ Alternatively, the ```dataset``` function can be used to load a dataset from a p
 and can be easily loaded as follows:
 
 ```@example pbmc
-using Cell
+using Severo
 X = dataset("PBMC", "3k")
 
 # The matrix can be indexed using names or indices. For instance,
 # we can look at specific genes in the first thirty cells
-X[1:30, ["CD3D", "TCL1A", "MS4A1"]]
+#X[1:30, ["CD3D", "TCL1A", "MS4A1"]]
 ```
 
 The count data is stored in a sparse matrix format, only storing non-zero elements of the matrix. Any values not shown are zero.
@@ -154,10 +154,10 @@ Briefly, the clustering embed cells in a graph structure with edges between cell
 First, we need to find the k-nearest neighbors of all the cells based on the euclidean distance in PCA space, and then compute a graph based on the shared overlap in the local neighborhoods between any two cells (Jaccard similarity). These step are performed using the `nearest_neighbours` and `jaccard_index` functions. For convenience, the two steps are also combined in the `shared_nearest_neighours` function.
 
 ```@example pbmc
-nn = nearest_neighbours(em, 20, 1:10)
+nn = nearest_neighbours(em, 20, dims=1:10)
 snn = jaccard_index(nn, prune=1/15)
 # or as a single step
-#snn = nearest_neighbours(em, 20, 1:10, prune=1/15)
+#snn = nearest_neighbours(em, 20, dims=1:10, prune=1/15)
 ```
 
 ```@docs

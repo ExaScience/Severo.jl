@@ -1,4 +1,4 @@
-# Cell.jl
+# Severo.jl
 
 Some example usage of the package can be found in the [Showcase](@ref) page.
 
