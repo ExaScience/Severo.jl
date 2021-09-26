@@ -9,7 +9,10 @@ to minimize hardware resources such as memory while maximizing performance throu
 
 The package provides a toolbox of different algorithms and statistical methods from which the user can pick and choose.
 
-Please see the [documentation](https://exascience.github.io/Severo.jl/dev/) for instructions and examples.
+## Documentation
+
+- [**STABLE**][https://exascience.github.io/Severo.jl/stable/] &mdash; **documentation of the most recently tagged version.**
+- [**DEVEL**][https://exascience.github.io/Severo.jl/dev/] &mdash; *documentation of the in-development version.*
 
 ## Prerequisites
 
@@ -18,6 +21,15 @@ The package depends on `Severo_jll` which is available from https://github.com/E
 To install `Severo_jll`, you'll need to run
 ```julia
 import Pkg; Pkg.add("https://github.com/Exascience/Severo_jll.jl")
+```
+
+## Installation
+
+To install `Severo`, you'll need to run
+```julia
+import Pkg;
+Pkg.add("https://github.com/Exascience/Severo.jl")
+Pkg.build("Severo")
 ```
 
 ## Contributing
