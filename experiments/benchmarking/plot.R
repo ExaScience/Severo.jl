@@ -95,3 +95,5 @@ ggplot(X, aes(x=implementation, y=time, fill=step)) +
 
 Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(totaltime=sum(t)) %>% dplyr::ungroup()
 ggplot(Y, aes(x=size, y=totaltime, fill=implementation)) + geom_bar(position="dodge", stat="identity")
+
+ggsave(file="comparison_datasets.svg", plot=p, width=20, height=15)
