@@ -7,12 +7,15 @@ A software package for analysis and exploration of single-cell RNA-seq datasets
 Severo.jl was created for the scalable analysis of single-cell RNA-seq datasets: the implementation is designed
 to minimize hardware resources such as memory while maximizing performance through parallelism and hardware optimizations.
 
+Severo.jl gives an order of magnitude speedup when compared to other existing packages such as Seurat and Scanpy:
+<img src="https://raw.githubusercontent.com/ExaScience/Severo.jl/experiments/comparison/experiments/benchmarking/comparison_datasets.svg" alt="performance vs other packages" width="700"/>
+
 The package provides a toolbox of different algorithms and statistical methods from which the user can pick and choose.
 
 ## Documentation
 
-- [**STABLE**][https://exascience.github.io/Severo.jl/stable/] &mdash; **documentation of the most recently tagged version.**
-- [**DEVEL**][https://exascience.github.io/Severo.jl/dev/] &mdash; *documentation of the in-development version.*
+- [**STABLE**](https://exascience.github.io/Severo.jl/stable/) &mdash; **documentation of the most recently tagged version.**
+- [**DEVEL**](https://exascience.github.io/Severo.jl/dev/) &mdash; *documentation of the in-development version.*
 
 ## Prerequisites
 
