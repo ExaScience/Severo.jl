@@ -5,7 +5,16 @@ import Clustering: randindex
 
 jaccard(A, B) = (A = Set(A); B = Set(B); length(intersect(A,B)) / length(union(A,B)))
 
-df = DataFrame()
+function read_peakmem(ds)
+    if haskey(ds, "peakmem")
+        read(ds, "peakmem")/1024^2
+    else
+        missing
+    end
+end
+
+df = DataFrame(dataset=String[], it=Int64[], size=Int64[], implementation=String[],
+     ari=Float64[], ri=Float64[], jaccard=Float64[], peakmem=Union{Missing, Float64}[])
 for fname in filter(endswith("h5"), readdir())
     try
         name, _ = splitext(fname)
@@ -21,18 +30,16 @@ for fname in filter(endswith("h5"), readdir())
                 lbls_ref = read(io, "R/lbls")
                 hvf_ref = read(io, "R/hvf")
                 size = length(lbls_ref)
+                peakmem = read_peakmem(io["R"])
+
+                push!(df, (dataset=name, it=it, size=size, implementation="R", ari=1., ri=1., jaccard=1., peakmem=peakmem))
 
                 for prefix in filter(x->haskey(io, x), ["jl", "jl32", "py"])
                     lbls = read(io, "$(prefix)/lbls")
                     hvf = read(io, "$(prefix)/hvf")
                     ari, ri, _ = randindex(lbls_ref, lbls)
                     j = jaccard(hvf_ref, hvf)
-
-                    peakmem = if haskey(io, "$prefix/peakmem")
-                        read(io, "$(prefix)/peakmem")/1024^2
-                    else
-                        0.0
-                    end
+                    peakmem = read_peakmem(io[prefix])
 
                     push!(df, (dataset=name, it=it, size=size, implementation=prefix, ari=ari, ri=ri, jaccard=j, peakmem=peakmem))
                 end
