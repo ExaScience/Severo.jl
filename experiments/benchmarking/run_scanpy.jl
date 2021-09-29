@@ -130,8 +130,7 @@ function FindAllMarkers(X::PyObject, lbls=nothing; only_pos=true, min_pct=0.25, 
   pd_to_df(df)
 end
 
-@time_calls function py_pipeline(X)
-  A = matrix_to_py(X)
+@time_calls function py_pipeline(A)
   data = CreateSeuratObject(A, min_cells=3, min_features=200)
   data = FindVariableFeatures(data, selection_method="vst", nfeatures=2000)
   hvf = VariableFeatures(data)
@@ -185,6 +184,8 @@ function post_process(f, prefix, x)
   de = convert(DataFrame, vals[4])
   write(ds, "de", de)
 
+  write(ds, "peakmem", get_vmsize())
+
   t, hvf, lbls, umap
 end
 
@@ -212,7 +213,9 @@ for fname in ARGS
       if !haskey(io, "py")
         println("Processing $dataset ($fname)")
         X = read_data(fname)
-        post_process(io, "py", py_pipeline(X))
+        A = matrix_to_py(X)
+        X = nothing; GC.gc()
+        post_process(io, "py", py_pipeline(A))
       end
     end
   catch e

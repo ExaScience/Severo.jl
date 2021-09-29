@@ -5,6 +5,7 @@ using HDF5
 import CategoricalArrays: CategoricalValue
 import Clustering: randindex, counts
 
+include("memusage.jl")
 include("time_calls.jl")
 @rimport Seurat
 
@@ -115,6 +116,8 @@ function post_process(f, prefix, x)
 
   de = convert(DataFrame, vals[4])
   write(ds, "de", de)
+
+  write(ds, "peakmem", get_vmsize())
 
   t, hvf, lbls, umap
 end
