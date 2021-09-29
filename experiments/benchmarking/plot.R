@@ -5,6 +5,7 @@ library(cowplot)
 library(dplyr)
 library(tidyr)
 
+if(F) {
 plot.loadings <- function(X, dims=1:6, n=20) {
     top <- function(x, n) names(head(sort(abs(x)), n))
 
@@ -31,30 +32,23 @@ rownames(loadings2) <- hvf
 p <- plot.loadings(loadings, dims=1:3)
 q <- plot.loadings(loadings2, dims=1:3)
 wrap_plots(p,q)
-
-if(F) {
-cos.dist <- function(X) {
-    sim <- X / sqrt(rowSums(X * X))
-    sim <- sim %*% t(sim)
-    as.dist(sim)
 }
 
-fname <- "l5_all.loom.h5"
-fname <- "210129_raw_BALPBMC.h5ad.h5"
-orig <- h5read(fname, "coordinates")
-umap_jl <- h5read(fname, "jl_umap")
-umap_R <- h5read(fname, "R_umap")
-J <- sample(1:nrow(orig), 10000)
+X <- read.csv("umap.csv") %>% dplyr::filter(implementation!="jl32") %>%
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl"), labels=c("seurat", "scanpy", "severo")),
+        dataset = factor(dataset,
+                    levels=c("1M_gz", "210129_raw_BALPBMC.h5ad", "l5_all", "pbmc_68k", "3k"),
+                    labels=c("brain cells (1.3M)", "Covid-19 (500k)", "Mouse Brain Atlas (120k)", "pbmc_68k"="PBMC (68k)", "3k"="PBMC (3k)"),
+        ),
+    ) %>% tidyr::drop_na(implementation, dataset)
 
-d_orig <- cos.dist(orig[J,])
-d_jl <- cos.dist(umap_jl[J,])
-d_R <- cos.dist(umap_R[J,])
+Y <- X %>% dplyr::group_by(dataset, implementation) %>% dplyr::summarize(r=first(pearson))
 
-cuts <- cut(d_orig, 50)
-boxplot(d_jl~cuts,outline=FALSE,xaxt="n")
-r <- cor(d_jl, d_orig, method="pearson")
-text(x=par("usr")[1],y=par("usr")[4],labels=paste("r=",signif(r,2),sep=""),pos=4,xpd=NA)
-}
+p <- ggplot(X) +
+    geom_boxplot(aes(x=cut, ymin=ymin, lower=lower, middle=middle, upper=upper, ymax=ymax, group=cut, color=implementation), stat="identity") +
+    geom_text(aes(x=-Inf, y=Inf, label=paste0("r = ", round(r,1))), color="black", data=Y, hjust=-0.5, vjust=1.5) +
+    facet_grid(implementation~dataset)
+ggsave(file="comparison_umap.pdf", plot=p, width=20, height=15)
 
 X <- read.csv("comparison.csv", stringsAsFactors=T)
 X <- X %>% dplyr::filter(dataset %in% c("1M_gz", "210129_raw_BALPBMC.h5ad", "3k", "l5_all", "pbmc_68k")) %>%
@@ -87,13 +81,13 @@ palette <- c("red4", "darkslategray3", "dodgerblue1", "darkcyan",
                "seagreen4", "lightgreen", "skyblue4", "mediumpurple3",
                "palevioletred1", "lightsalmon4", "darkgoldenrod1")
 
-ggplot(X, aes(x=implementation, y=time, fill=step)) +
+p <- ggplot(X, aes(x=implementation, y=time, fill=step)) +
     geom_bar(position = "stack", stat="identity") +
 #    scale_fill_manual(values=cols) +
     geom_text(aes(x=implementation, y=totaltime, fill=NULL, label=paste0(round(speedup,1),"x")), data=Z, position=position_dodge(0.9), vjust=-1) +
     facet_wrap(~dataset, scales="free_y", nrow=1) + ylab("Time (s)") + xlab(NULL) + theme(panel.background=element_rect("#F8f8f8"))
 
-Y <- X %>% dplyr::group_by(dataset, size, implementation) %>% dplyr::summarize(totaltime=sum(t)) %>% dplyr::ungroup()
-ggplot(Y, aes(x=size, y=totaltime, fill=implementation)) + geom_bar(position="dodge", stat="identity")
+#Y <- X %>% dplyr::group_by(dataset, implementation) %>% dplyr::summarize(totaltime=sum(time)) %>% dplyr::ungroup()
+#ggplot(Y, aes(x=dataset, y=totaltime, fill=implementation)) + geom_bar(position="dodge", stat="identity")
 
-ggsave(file="comparison_datasets.svg", plot=p, width=20, height=15)
+ggsave(file="comparison_datasets.pdf", plot=p, width=20, height=15)
