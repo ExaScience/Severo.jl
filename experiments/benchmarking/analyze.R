@@ -5,6 +5,8 @@ library(cowplot)
 library(dplyr)
 library(tidyr)
 
+cols <- c("seurat"="#F8766D", "scanpy"="#00BA38", "severo"="#619CFF")
+
 X1 <- read.csv("nohvf.csv")
 X2 <- read.csv("hvf.csv")
 X <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2))
@@ -16,7 +18,7 @@ round_size <- function(size) {
 }
 
 X <- X %>% dplyr::filter(implementation %in% c("R", "jl_opt", "py")) %>%
-    dplyr::mutate(implementation = factor(implementation, levels=c("R", "jl_opt", "py"), labels=c("seurat", "severo", "scanpy")),
+    dplyr::mutate(implementation = factor(implementation, levels=c("R", "py", "jl_opt"), labels=c("seurat", "scanpy", "severo")),
                   step = factor(step,
                             levels=c("CreateSeuratObject", "FindVariableFeatures", "NormalizeData", "ScaleData", "RunPCA", "FindNeighbors", "FindClusters", "RunUMAP", "FindAllMarkers"),
 #                            labels=c("filter_counts", "find_variable_features", "normalize_cells", "scale_features", "embedding", "shared_nearest_neighbours", "cluster")
@@ -40,8 +42,9 @@ extrap$t <- predict(ols, extrap)
 
 pd <- position_dodge(.3)
 x_scale <- scale_x_continuous(breaks=c(3000, 25000, 50000, 100000, 250000, 500000, 750000, 1000000))
-ggplot(Z, aes(x=size,y=mu, fill=implementation, color=implementation)) +
-    geom_errorbar(aes(ymin=mu-ci, ymax=mu+ci), width=.1, position=pd) +
+p <- ggplot(Z, aes(x=size,y=mu, fill=implementation, color=implementation)) +
+    #geom_errorbar(aes(ymin=mu-ci, ymax=mu+ci), width=.1, position=pd) +
+    geom_point(aes(x=size, y=time), data=X, position=pd) +
     geom_point(position=pd) +
     #geom_point(aes(x=size, y=t), data=extrap, shape=4, position=pd) +
     geom_line(aes(x=size, y=predict, group=implementation, color=implementation), position=pd) +
@@ -50,10 +53,19 @@ ggplot(Z, aes(x=size,y=mu, fill=implementation, color=implementation)) +
     x_scale +
     guides(x =  guide_axis(angle = 45)) +
     facet_wrap(~step, scales="free_y", ncol=3)
+ggsave(file="scaling_breakdown.pdf", plot=p, width=20, height=15)
 
-XX <- data.frame(X)
-XX$size <- as.factor(XX$size)
-ggplot(XX, aes(fill=step, x=size, y=t)) + geom_bar(position="fill", stat="identity") + facet_wrap(~implementation, scales="free_y", ncol=2)
+p <- ggplot(Y) + geom_boxplot(aes(x=as.factor(size), fill=implementation, y=clusters)) + xlab("Number of cells") + ylab("Number of clusters found")
+ggsave(file="scaling_clusters.pdf", plot=p, width=20, height=15)
+
+ZZ <- Z %>% dplyr::filter(step!="FindAllMarkers") %>% dplyr::group_by(size, implementation) %>% dplyr::mutate(percent=mu/sum(mu)) %>% dplyr::ungroup()
+p <- ggplot(ZZ, aes(fill=step, x=as.factor(size), y=percent)) +
+    geom_bar(stat="identity") +
+    facet_wrap(~implementation, scales="free_y", ncol=3) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.03)) +
+    xlab("Number of cells") +
+    ylab("Runtime percentage")
+ggsave(file="scaling_percentage.pdf", plot=p, width=20, height=15)
 
 Y <- X %>% dplyr::group_by(hvf, dataset, it, size, implementation) %>%
             dplyr::summarize(totaltime=sum(time), clusters=first(clusters)) %>%
@@ -75,27 +87,24 @@ ggplot(YS, aes(x=size,y=count, fill=implementation, color=implementation)) +
     scale_y_continuous(breaks=unique(YS$count)) +
     scale_x_log10(breaks=unique(YS$size))
 
-YY <- data.frame(Y)
-YY$size <- as.factor(YY$size)
-ggplot(YY) + geom_boxplot(aes(x=size, fill=implementation, y=clusters))
-
 S <- Y %>% dplyr::group_by(hvf, dataset, it, size) %>% dplyr::select(-clusters) %>%
                  tidyr::pivot_wider(names_from=implementation, values_from=totaltime) %>%
                     dplyr::transmute(seurat=seurat/severo, scanpy=scanpy/severo) %>%
                 tidyr::pivot_longer(cols=c(seurat, scanpy), names_to="implementation", values_to="speedup") %>%
             dplyr::ungroup()
 
-ggplot(S, aes(x=size,y=speedup, fill=implementation, color=implementation)) +
+p <- ggplot(S, aes(x=size,y=speedup, fill=implementation, color=implementation)) +
         geom_point(position=pd) +
         xlab("Number of cells") +
         ylab("Speedup") +
         x_scale +
         guides(x =  guide_axis(angle = 45)) +
         scale_y_continuous(breaks=seq(0, 50, 5))
+ggsave(file="scaling_speedup.pdf", plot=p, width=20, height=20)
 
 S <- X %>% dplyr::group_by(hvf, dataset, it, size, step) %>% dplyr::select(-clusters) %>%
                  tidyr::pivot_wider(names_from=implementation, values_from=time) %>%
-                    dplyr::transmute(R=R/jl_opt, py=py/jl_opt, opt=jl/jl_opt) %>%
+                    dplyr::transmute(seurat=seurat/severo, scanpy=scanpy/severo) %>%
                 tidyr::pivot_longer(cols=c(R, py, opt), names_to="implementation", values_to="speedup") %>%
             dplyr::ungroup()
 
@@ -104,18 +113,18 @@ p <- ggplot(S, aes(x=size, y=speedup, fill=implementation, color=implementation)
     xlab("Number of cells") +
     ylab("Speedup") +
     x_scale +
+    #scale_y_continuous(breaks=seq(0, 50, 5)) +
     guides(x =  guide_axis(angle = 45)) +
     facet_wrap(~step, scales="free_y", ncol=3)
 
-q <- ggplot(YS, aes(x=size,y=t, fill=implementation, color=implementation)) +
+p <- ggplot(YS, aes(x=size,y=t, fill=implementation, color=implementation)) +
     geom_point(aes(x=size, y=totaltime), data=Y, position=pd) +
     geom_line(aes(x=size, y=predict, group=implementation, color=implementation), data=YS, position=pd) +
     xlab("Number of cells") +
     ylab("Time (s)") +
     x_scale +
     guides(x =  guide_axis(angle = 45))
-
-wrap_plots(p,q)
+ggsave(file="scaling_runtime.pdf", plot=p, width=20, height=20)
 
 P <- X %>% dplyr::group_by(hvf, size, it, implementation) %>% dplyr::mutate(total=sum(time)) %>% tidyr::pivot_wider(names_from=step, values_from=time) %>%
     dplyr::transmute(percent_markers=FindAllMarkers/total, percent_umap=RunUMAP/total, total=total, markers=FindAllMarkers, umap=RunUMAP) %>% dplyr::ungroup()
@@ -153,15 +162,3 @@ wrap_plots(
 #ggplot(YY) + geom_pointrange(aes(x=size, y=jaccard_mu, ymin=(jaccard_mu-jaccard_se), ymax=(jaccard_mu+jaccard_se), color=implementation), size=0.5, position = position_dodge(width=.03)) + scale_x_log10(breaks=unique(YY$size))
 
 ggplot(XX) + geom_boxplot() + geom_jitter(color="black", size=0.4, alpha=0.9) + theme_ipsum()
-
-
-X1 <- read.csv("ari_nohvf.csv")
-X2 <- read.csv("ari_hvf.csv")
-XX <- rbind(cbind(hvf=F,X1), cbind(hvf=T,X2))
-YY <- XX %>% dplyr::group_by(size, implementation) %>% dplyr::summarize(ari=median(ari), jaccard=median(jaccard)) %>% dplyr::ungroup()
-ggplot(YY, aes(x=size, y=ari, group=implementation, color=implementation)) + geom_line()
-
-#scp lynx:/data/thaber/1.3M_subsamples_processed_hvf/hvf.csv .
-#scp lynx:/data/thaber/1.3M_subsamples_processed/nohvf.csv .
-#scp lynx:/data/thaber/1.3M_subsamples_processed/ari_nohvf.csv .
-#scp lynx:/data/thaber/1.3M_subsamples_processed_hvf/ari_hvf.csv .
