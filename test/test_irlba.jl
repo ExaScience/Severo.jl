@@ -92,11 +92,16 @@ svd(C::Severo.CenteredMatrix) = svd(convert(Matrix, C))
 
 	@testset "tall-skinny and tranpose" begin
 		X = randn(10000, 10)
+
 		S1 = Severo.irlba(X, 2, tol=1e-9)
+		Severo.svd_flip!(S1, u_based_decision=true)
+
 		S2 = Severo.irlba(X', 2, tol=1e-9)
+		Severo.svd_flip!(S2, u_based_decision=false)
+
 		@test S1.S ≈ S2.S
-		@test abs.(S1.U) ≈ abs.(S2.V) #XXX lazy testing
-		@test abs.(S1.V) ≈ abs.(S2.U)
+		@test S1.U ≈ S2.V atol=1e-7
+		@test S1.V ≈ S2.U atol=1e-7
 	end
 
 	@testset "count matrix" begin

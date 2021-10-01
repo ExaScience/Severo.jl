@@ -212,10 +212,16 @@ function myfindmax(f, itr)
 end
 
 import LinearAlgebra: SVD
-function svd_flip!(S::SVD)
+function svd_flip!(S::SVD; u_based_decision::Bool=true)
     U,s,V = S
-    max_u_col = argmax(abs.(U), dims=1)
-    signs = sign.(U[max_u_col])
+    signs = if u_based_decision
+        max_u_col = argmax(abs.(U), dims=1)
+        sign.(U[max_u_col])
+    else
+        max_v_col = argmax(abs.(V), dims=1)
+        sign.(V[max_v_col])
+    end
+
     U .*= signs
     V .*= signs
     S
