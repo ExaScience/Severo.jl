@@ -35,7 +35,7 @@ import Random: default_rng
         x / (k + (k - x))
     end
 
-    @test quantile(j, .1) > .95
+    @test quantile(j, .3) == 1.0
 end
 
 @testset "cosine" begin
@@ -53,7 +53,7 @@ end
         x / (k + (k - x))
     end
 
-    @test quantile(j, .1) > .95
+    @test quantile(j, .3) == 1.0
 end
 
 @testset "view" begin
@@ -72,7 +72,7 @@ end
         x / (k + (k - x))
     end
 
-    @test quantile(j, .1) > .95
+    @test quantile(j, .3) == 1.0
 end
 
 @testset "32bit" begin
