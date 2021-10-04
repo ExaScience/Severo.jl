@@ -65,7 +65,7 @@ function plot_loadings(em::LinearEmbedding; dims::AbstractVector{<:Integer}=1:6,
     featn, dimn = names(loadings)
     p = map(dims) do dim
         x = loadings.array[:,dim]
-        features = partialsortperm(x, 1:nfeatures, rev=true)
+        features = partialsortperm(x, 1:nfeatures, rev=true, by=abs)
         n = featn[features]
         scatter(x[features], 1:nfeatures, yticks=(1:nfeatures, n), yrotation=90, legend=nothing, title=dimn[dim])
     end
