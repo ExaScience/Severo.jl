@@ -545,7 +545,7 @@ function read_loom(fname::AbstractString; barcode_names::AbstractString="CellID"
 end
 
 """
-    read_csv(dirname::AbstractString; unique_features=true)
+    read_csv(fname::AbstractString; unique_features=true)
 
 Read count matrix from CSV
 
@@ -558,13 +558,13 @@ Read count matrix from CSV
 
 Returns labeled sparse matrix containing the counts
 """
-function read_csv(dirname::AbstractString; unique_features::Bool=true)
-    X, features, barcodes = _read_csv(dirname)
+function read_csv(fname::AbstractString; unique_features::Bool=true)
+    X, features, barcodes = _read_csv(fname)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
 
 """
-    read_csv(dirname::AbstractString; unique_features=true)
+    read_dge(fname::AbstractString; unique_features=true)
 
 Read count matrix from digital gene expression (DGE) files
 
@@ -577,7 +577,7 @@ Read count matrix from digital gene expression (DGE) files
 
 Returns labeled sparse matrix containing the counts
 """
-function read_dge(dirname::AbstractString; unique_features::Bool=true)
+function read_dge(fname::AbstractString; unique_features::Bool=true)
     X, features, barcodes = _read_dge(dirname)
     convert_counts(X, features, barcodes, unique_features=unique_features)
 end
