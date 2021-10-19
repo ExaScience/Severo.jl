@@ -13,7 +13,7 @@
 # Affero General Public License for more details.
 
 import HTTP
-import GZip
+import CodecZlib: GzipDecompressorStream
 import Tar
 
 abstract type DataSet end
@@ -209,7 +209,7 @@ function maybe_download(ds::TarDataSet, path::AbstractString)
         mktemp() do path, io
             download(ds.url, io)
             seekstart(io)
-            tar = GZip.gzdopen(io)
+            tar = GzipDecompressorStream(io)
             try
                 extract_tarball(tar, location)
             finally

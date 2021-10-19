@@ -14,7 +14,7 @@
 
 import CSV
 import DataFrames: DataFrame
-import GZip
+import CodecZlib: GzipDecompressorStream
 import HDF5
 import HDF5: h5open, attributes, haskey, filename
 import SparseArrays: nonzeros, rowvals, getcolptr, sparse
@@ -114,28 +114,22 @@ function readMM(mm::IO; read_comments::Bool=false)
     read_comments ? (X, comments) : X
 end
 
-function readMM(fname::AbstractString; kw...)
-    io = if endswith(fname, ".gz")
-        GZip.open(fname, "r")
+function maybe_gzip(f::Function, fname::AbstractString)
+    if endswith(fname, ".gz")
+        open(f, GzipDecompressorStream, fname)
     else
-        open(fname, "r")
+        open(f, fname, "r")
     end
+end
 
-    try
+function readMM(fname::AbstractString; kw...)
+    maybe_gzip(fname) do io
         readMM(io; kw...)
-    finally
-        close(io)
     end
 end
 
 function _read_dge(fname::AbstractString; kw...)
-    io = if endswith(fname, ".gz")
-        GZip.open(fname, "r")
-    else
-        open(fname, "r")
-    end
-
-    try
+    maybe_gzip(fname) do io
         X, comments = readMM(io; read_comments=true, kw...)
 
         genes = Vector{SubString}()
@@ -154,8 +148,6 @@ function _read_dge(fname::AbstractString; kw...)
         end
 
         copy(X'), genes, barcodes
-    finally
-        close(io)
     end
 end
 
@@ -195,31 +187,13 @@ function _read_10X_h5(fname::AbstractString, dataset::AbstractString="/mm10")
 end
 
 function readDelim(fname::AbstractString; kw...)
-    io = if endswith(fname, ".gz")
-        GZip.open(fname, "r")
-    else
-        open(fname, "r")
-    end
-
-    try
+    maybe_gzip(fname) do io
         CSV.read(io, DataFrame; kw...)
-    finally
-        close(io)
     end
 end
 
 function _readlines(fname::AbstractString)
-    io = if endswith(fname, ".gz")
-        GZip.open(fname, "r")
-    else
-        open(fname, "r")
-    end
-
-    try
-        readlines(io)
-    finally
-        close(io)
-    end
+    maybe_gzip(readlines, fname)
 end
 
 function _read_10X(matrix_file::AbstractString, barcodes_file::AbstractString, feature_file::AbstractString, gene_column::Int64=2)
