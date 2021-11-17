@@ -402,6 +402,41 @@ function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::AbstractString, 
     end
 end
 
+function read_dataframe(g::Union{HDF5.File, HDF5.Group})
+    attrs = HDF5.attributes(g)
+    @assert read(attrs, "encoding-version") == "0.1.0"
+    @assert read(attrs, "encoding-type") == "dataframe"
+
+    function read_col(n::AbstractString)
+        ds = g[n]
+        iscategorical = haskey(attributes(ds), "categories")
+        if iscategorical
+            cats = read(attributes(ds), "categories")
+            cats = getindex(g, cats)
+            isordered = read(attributes(cats), "ordered") != 0
+
+            vals = read(ds)
+            lvls = read(cats)
+            v = CategoricalVector(undef, length(vals); levels=lvls, ordered=isordered)
+            v .= CategoricalValue.(vals .+ 1, Ref(v.pool))
+            v
+        else
+            read(ds)
+        end
+    end
+
+    columns = [n => read_col(n) for n in read(attrs, "column-order")]
+    df = DataFrame(columns)
+
+    if haskey(attrs, "_index")
+        index = read(attrs, "_index")
+        index = read_col(index)
+        insertcols!(df, 1, :index=>index)
+    end
+
+    df
+end
+
 function write_h5ad(fname::AbstractString, X::NamedCountMatrix)
     h5open(fname, "cw") do f
         try
