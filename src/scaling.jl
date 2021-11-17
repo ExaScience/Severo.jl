@@ -332,13 +332,25 @@ Scale and center a count/data matrix along the cells such that each feature is s
 
 A centered matrix
 """
-@partial function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where T; scale_max::Real=Inf, dtype::Type{<:AbstractFloat}=Float64)
+@partial function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where T; scale_max::Real=Inf,
+        dtype::Type{<:AbstractFloat}=Float64, features::Union{Nothing, AbstractArray}=nothing)
+
+    if features !== nothing
+        X = X[:, features]
+    end
+
     scale_max = convert(dtype, scale_max)
     B, mu = scale_data(X.array, scale_max)
     CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
 end
 
-function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf, dtype::Type{<:AbstractFloat}=T) where {T <: AbstractFloat}
+function scale_features(X::NamedArray{T, 2, SparseMatrixCSC{T, Int64}}; scale_max::Real=Inf,
+        dtype::Type{<:AbstractFloat}=T, features::Union{Nothing, AbstractArray}=nothing) where {T <: AbstractFloat}
+
+    if features !== nothing
+        X = X[:, features]
+    end
+
     scale_max = convert(dtype, scale_max)
     B, mu = scale_data(X.array, scale_max)
     CenteredMatrix(NamedArray(B, X.dicts, X.dimnames), NamedArray(mu, (X.dicts[2],), (X.dimnames[2],)))
