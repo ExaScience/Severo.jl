@@ -389,10 +389,10 @@ function HDF5.write(parent::Union{HDF5.File, HDF5.Group}, name::AbstractString, 
 
     write_col(n::AbstractString, x::AbstractVector) = write(g, n, x; pv...)
     function write_col(n::AbstractString, x::CategoricalVector)
-      refs = map(levelcode, x)
+      refs = levelcode.(x) .- 1
       vals = levels(x)
       write(cats, n, vals; pv...)
-      write(g, n, x; pv...)
+      write(g, n, refs; pv...)
       write(attributes(g[n]), "categories", cats[n])
     end
 
