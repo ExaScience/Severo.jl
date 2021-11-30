@@ -13,14 +13,14 @@
 # Affero General Public License for more details.
 
 function filter_features(A::CountMatrix; min_cells=0)
-    cells_per_feature = vec(sum(A .> 0, dims=1))
+    cells_per_feature = vec(sum(>(0), A, dims=1))
     FI = (cells_per_feature .>= min_cells)
 
     A[:, FI], FI
 end
 
 function filter_cells(A::CountMatrix; min_features=0, min_feature_count=0, min_umi=0)
-    features_per_cell = vec(sum(A .> min_feature_count, dims=2))
+    features_per_cell = vec(sum(>(min_feature_count), A, dims=2))
     CI = (features_per_cell .>= min_features)
 
     if min_umi > 0
