@@ -86,7 +86,7 @@ The Jaccard index is used to quantify similarity, and is the final metric averag
     - `k`: number of neighbours to find (default=15)
 
 **Return values**:
-The agreement score
+A tuple of agreement scores for each transformed dataset
 """
 function agreement(rng::AbstractRNG, X::AbstractMatrix, Ys::Union{AbstractMatrix, LinearEmbedding}...; k::Int64=15, metric::SemiMetric=Euclidean())
     nn_X, _ = ann(rng, X, k, metric)
