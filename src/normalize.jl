@@ -12,25 +12,46 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # Affero General Public License for more details.
 
-import SparseArrays: SparseVector, SparseColumnView, SparseMatrixCSCView, nonzeros, nonzeroinds, nnz, nzrange
+import SparseArrays: AbstractSparseMatrixCSC, nonzeros, nonzeroinds, nnz, nzrange
 
-function row_norm(A::SparseMatrixCSC{T}, scale_factor::R=1.0) where {T <: Integer, R <: AbstractFloat}
+function row_norm(A::AbstractSparseMatrixCSC, scale_factor::R=1.0) where {R <: AbstractFloat}
     B = similar(A, R)
+
+    rv = rowvals(A)
+    nzA = nonzeros(A)
+    nzB = nonzeros(B)
 
     s = sum(A, dims=2)
     @inbounds for i in 1:size(A,2)
         @inbounds for j in nzrange(A, i)
-            nonzeros(B)[j] = scale_factor * nonzeros(A)[j] / s[rowvals(A)[j]]
+            nzB[j] = scale_factor * nzA[j] / s[rv[j]]
         end
     end
 
     B
 end
 
-function log_norm(A::SparseMatrixCSC{T}, scale_factor::R=1.0) where {T <: Integer, R <: AbstractFloat}
+function log_norm(A::AbstractSparseMatrixCSC, scale_factor::R=1.0) where {R <: AbstractFloat}
     B = row_norm(A, scale_factor)
     nonzeros(B) .= log1p.(nonzeros(B))
     B
+end
+
+function normalize_cells(X::AbstractSparseMatrixCSC; method=:lognormalize, scale_factor::Real=1., dtype::Type{T}=Float64) where {T <: AbstractFloat}
+    if isa(method, AbstractString)
+        method = Symbol(method)
+    end
+
+    f = if method == :lognormalize
+        log_norm
+    elseif method == :relativecounts
+        row_norm
+    else
+        error("unknown normalization method: $method")
+    end
+
+    scale_factor = convert(dtype, scale_factor)
+    f(X, scale_factor)
 end
 
 """
@@ -53,19 +74,6 @@ Normalize count data with different methods:
 A labelled data matrix
 """
 @partial function normalize_cells(X::NamedCountMatrix; method=:lognormalize, scale_factor::Real=1., dtype::Type{T}=Float64) where {T <: AbstractFloat}
-    if isa(method, AbstractString)
-        method = Symbol(method)
-    end
-
-    f = if method == :lognormalize
-        log_norm
-    elseif method == :relativecounts
-        row_norm
-    else
-        error("unknown normalization method: $method")
-    end
-
-    scale_factor = convert(dtype, scale_factor)
-    S = f(X.array, scale_factor)
+    S = normalize_cells(X.array, method=method, scale_factor=scale_factor, dtype=dtype)
     NamedArray(S, X.dicts, X.dimnames)
 end

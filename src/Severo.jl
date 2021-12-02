@@ -20,13 +20,13 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optle
     @eval Base.Experimental.@optlevel 3
 end
 
-import SparseArrays: sparse, SparseMatrixCSC, SparseVector, SparseColumnView
+import SparseArrays: sparse, AbstractSparseMatrixCSC, SparseMatrixCSC, SparseVector, SparseColumnView
 import NamedArrays: NamedArray, NamedMatrix, NamedVector, names, dimnames
 
-const CountMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Integer}
+const CountMatrix{T} = AbstractSparseMatrixCSC{T, Int64} where {T <: Integer}
 const NamedCountMatrix{T} = NamedArray{T} where {T <: Integer}
 
-const DataMatrix{T} = SparseMatrixCSC{T, Int64} where {T <: Real}
+const DataMatrix{T} = AbstractSparseMatrixCSC{T, Int64} where {T <: Real}
 const NamedDataMatrix{T} = NamedArray{T} where {T <: Real}
 
 const NeighbourGraph{T} = NamedArray{T, 2, SparseMatrixCSC{T, Int64}} where {T <: Real}
