@@ -14,6 +14,7 @@
 
 import Arpack: svds, eigs
 import LinearAlgebra: svd, Diagonal, Hermitian
+import Distances: SemiMetric, CosineDist, Euclidean
 import UMAP
 
 struct LinearEmbedding
@@ -100,11 +101,11 @@ end
 _umap(X::AbstractMatrix, ncomponents::Int64, ::Colon; kw...) = _umap(X, ncomponents; kw...)
 _umap(X::AbstractMatrix, ncomponents::Int64, dims; kw...) = _umap(view(X, :, dims), ncomponents; kw...)
 
-function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Union{Nothing,Integer}=nothing, kw...)
-    metric = if metric == :cosine
-        UMAP.CosineDist()
+function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric::Union{Symbol,SemiMetric}=:cosine, nneighbours::Integer=30, min_dist::Real=0.3, nepochs::Union{Nothing,Integer}=nothing, kw...)
+    metric::Union{Symbol,SemiMetric} = if metric == :cosine
+        CosineDist()
     elseif metric == :euclidian
-        UMAP.Euclidian()
+        Euclidean()
     else
         metric
     end
@@ -115,7 +116,8 @@ function _umap(X::AbstractMatrix, ncomponents::Int64=2; metric=:cosine, nneighbo
         nepochs
     end
 
-    UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=n_epochs, kw...)'
+    c = UMAP.umap(X', ncomponents; metric=metric, n_neighbors=nneighbours, min_dist=min_dist, n_epochs=n_epochs, kw...)
+    transpose(c)
 end
 
 """
@@ -204,8 +206,6 @@ end
 
     if method == :pca
         pca(X, ncomponents; kw...)
-    elseif method == :umap
-        umap(X, ncomponents; kw...)
     else
         error("unknown reduction method: $method")
     end
